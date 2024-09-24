@@ -2228,9 +2228,9 @@ Random UUID: 6d41c298-6b98-4a53-93e1-0123456789ab
 By using random values, you can dynamically assign properties that change each time the application is run, which is especially useful in test environments or when you need unique configurations.
 
 
-# Configuring System Environment Properties
 
-### Configuring System Environment Properties in Spring Boot
+
+## Configuring System Environment Properties in Spring Boot
 
 Spring Boot allows you to configure your application using system environment variables. These properties can be defined at runtime, and Spring Boot automatically loads them into the application’s environment, making them accessible within the application.
 
@@ -2328,7 +2328,7 @@ By leveraging system environment properties, you can dynamically configure your 
 
 
 
-# Type-safe Configuration Properties
+
 
 
 ### Type-safe Configuration Properties in Spring Boot
@@ -2533,7 +2533,7 @@ By using type-safe configuration properties, you ensure better readability, main
 
 ---
 
-# JavaBean Properties Binding
+
 
 
 ### JavaBean Properties Binding in Spring Boot
@@ -2728,7 +2728,7 @@ By leveraging JavaBean properties binding, Spring Boot provides a robust way to 
 
 # Constructor Binding
 
-### Constructor Binding in Spring Boot
+
 
 **Constructor Binding** in Spring Boot allows you to bind configuration properties directly to the constructor of a class instead of using setter methods. This is especially useful for immutable objects where fields are final and should only be set at the time of object creation.
 
@@ -2895,7 +2895,7 @@ public class MyAppService {
 Constructor binding is a modern approach in Spring Boot to handle type-safe configuration, especially when working with immutable objects. It adds clarity to how configuration properties are injected and provides benefits like immutability and thread safety.
 
 # Enabling @ConfigurationProperties-annotated Types
-### Enabling `@ConfigurationProperties`-annotated Types in Spring Boot
+
 
 In Spring Boot, the `@ConfigurationProperties` annotation is used to bind external configuration properties (from `.properties`, `.yaml`, environment variables, etc.) to a Java object. However, for these properties to be recognized and used by Spring Boot, you need to **enable** them explicitly in your application.
 
@@ -3023,7 +3023,7 @@ By using either `@EnableConfigurationProperties` or `@ConfigurationPropertiesSca
 # Using @ConfigurationProperties-annotated Types
 
 
-### Using `@ConfigurationProperties`-annotated Types
+
 
 Using `@ConfigurationProperties`-annotated types allows you to bind properties from `application.properties` or `application.yml` directly to Java objects.
 
@@ -3186,7 +3186,6 @@ This provides a modern, type-safe, and efficient way of handling application con
 
 # Third-party Configuration
 
-### Third-party Configuration
 
 Spring Boot supports the integration of third-party configuration systems to manage application properties more effectively. This allows you to externalize configuration from your application code, making it easier to manage configurations for different environments (development, testing, production, etc.).
 
@@ -3298,9 +3297,10 @@ Spring Cloud Vault provides support for securely accessing secrets stored in Has
 
 By leveraging these third-party configurations, you can enhance the flexibility and security of your Spring Boot applications.
 
+
 # Relaxed Binding
 
-### Relaxed Binding in Spring Boot
+
 
 Relaxed binding is a feature in Spring Boot that allows for more flexible mapping of configuration properties to Java objects. This feature makes it easier to configure your application by letting you use various formats for property names, making the configuration process less strict and more user-friendly.
 
@@ -3399,7 +3399,7 @@ This table summarizes the relaxed binding rules, making it easier to understand 
 
 
 # Binding Maps
-### Binding Maps in Spring Boot
+
 
 Binding maps in Spring Boot allows you to map configuration properties to a `Map` data structure, enabling dynamic and flexible configurations. This feature is particularly useful when you have a set of properties that share a common prefix but differ in their keys.
 
@@ -3482,7 +3482,7 @@ Binding maps in Spring Boot allows you to map configuration properties to a `Map
 Binding maps in Spring Boot provides a flexible way to manage related configuration properties using a `Map` data structure. This approach simplifies the configuration process and enhances the maintainability of your application.
 
 
-# Binding From Environment Variables
+
 
 
 ### Binding From Environment Variables in Spring Boot
@@ -3662,7 +3662,7 @@ Merging complex types in Spring Boot allows you to create structured configurati
 
 
 
-# Properties Conversion
+
 ### Properties Conversion in Spring Boot
 
 Properties conversion in Spring Boot involves transforming property values from their original format into the desired format that can be used within your application. This is especially useful when you want to bind configuration properties to complex types or when dealing with different data formats.
@@ -3772,7 +3772,7 @@ Properties conversion in Spring Boot is an essential feature that allows for sea
 
 
 
-# Converting Durations
+
 
 ### Converting Durations in Spring Boot
 
@@ -4255,3 +4255,406 @@ Both `@ConfigurationProperties` and `@Value` have their strengths and weaknesses
 
 
 
+<br></br>
+
+# Profiles in Spring Boot
+
+Spring Boot profiles allow you to define different configurations for different environments, such as development, testing, and production. Profiles help in separating concerns by enabling you to load specific beans and properties based on the current environment.
+
+#### Key Concepts
+
+1. **Profile-Specific Properties**
+   - You can have environment-specific properties files, such as `application-dev.properties` for development, `application-prod.properties` for production, etc.
+   - The active profile is used to load the corresponding configuration file.
+
+2. **Activating a Profile**
+   - You can activate a profile by setting the `spring.profiles.active` property in your `application.properties` file, as an environment variable, or through command-line arguments.
+
+    Example via command-line:
+    ```bash
+    java -jar myapp.jar --spring.profiles.active=prod
+    ```
+
+3. **@Profile Annotation**
+   - You can use the `@Profile` annotation to mark beans that should only be loaded when a specific profile is active.
+
+    ```java
+    @Service
+    @Profile("dev")
+    public class DevDatabaseService implements DatabaseService {
+        // Only loaded in the 'dev' profile
+    }
+    ```
+
+4. **Default Profile**
+   - If no profile is explicitly activated, Spring Boot will use the default profile, which you can configure using the `spring.profiles.default` property.
+
+5. **Multi-Document Files in YAML**
+   - You can configure profiles using YAML files by creating different sections for each profile:
+    ```yaml
+    spring:
+      profiles: dev
+      datasource:
+        url: jdbc:mysql://localhost:3306/devdb
+    ---
+    spring:
+      profiles: prod
+      datasource:
+        url: jdbc:mysql://localhost:3306/proddb
+    ```
+
+6. **Including and Excluding Profiles**
+   - You can include or exclude profiles conditionally using `@Profile("!prod")` to exclude a profile or `@Profile("dev & test")` to require both profiles.
+
+#### Profile-Specific Property Files
+
+Spring Boot automatically loads profile-specific properties files based on the active profile:
+
+- `application.properties` – default properties.
+- `application-dev.properties` – development properties.
+- `application-prod.properties` – production properties.
+
+If `spring.profiles.active=prod`, Spring Boot will load both `application.properties` and `application-prod.properties`, where the latter will override any common properties.
+
+#### Activating Multiple Profiles
+
+You can activate multiple profiles by using a comma-separated list:
+
+```properties
+spring.profiles.active=dev,qa
+```
+
+In this case, properties from both `application-dev.properties` and `application-qa.properties` will be loaded.
+
+### Example Use Case
+
+Let's say you have different database configurations for development and production environments. You can define two different sets of properties and activate them accordingly:
+
+**application-dev.properties**:
+```properties
+spring.datasource.url=jdbc:h2:mem:testdb
+spring.datasource.username=sa
+spring.datasource.password=password
+```
+
+**application-prod.properties**:
+```properties
+spring.datasource.url=jdbc:mysql://localhost:3306/proddb
+spring.datasource.username=produser
+spring.datasource.password=securepassword
+```
+
+Activate the `prod` profile for production using:
+
+```bash
+java -jar myapp.jar --spring.profiles.active=prod
+```
+
+In this way, you can easily switch between environments with different configurations by activating the appropriate profile.
+
+
+### Profile Groups in Spring Boot
+
+Profile groups allow you to organize and activate multiple profiles under a single group. When you activate a profile group, all the profiles included in that group get activated automatically. This helps manage complex configurations across different environments by grouping related profiles.
+
+#### How to Define Profile Groups
+
+You can define profile groups in your `application.properties` or `application.yml` file. A group contains a list of profiles that should be activated together when the group itself is activated.
+
+##### Defining Profile Groups in `application.properties`:
+
+```properties
+# Define a group called 'prod'
+spring.profiles.group.prod=prod-db,prod-security
+
+# Define another group called 'dev'
+spring.profiles.group.dev=dev-db,dev-security
+```
+
+In this example:
+- When you activate the `prod` profile group, both the `prod-db` and `prod-security` profiles are automatically activated.
+- Similarly, activating the `dev` group will activate the `dev-db` and `dev-security` profiles.
+
+##### Defining Profile Groups in `application.yml`:
+
+```yaml
+spring:
+  profiles:
+    group:
+      prod: 
+        - prod-db
+        - prod-security
+      dev: 
+        - dev-db
+        - dev-security
+```
+
+#### Activating Profile Groups
+
+To activate a profile group, simply use the `spring.profiles.active` property with the group name:
+
+```bash
+java -jar myapp.jar --spring.profiles.active=prod
+```
+
+This command activates the `prod` group, which in turn activates `prod-db` and `prod-security`.
+
+#### Example Use Case
+
+Suppose you have multiple profiles that manage different aspects of your application (database, security, messaging) for both development and production environments. Instead of activating all profiles individually, you can group them.
+
+For example:
+
+- **prod-db**: Production database configuration.
+- **prod-security**: Production security settings.
+- **dev-db**: Development database configuration.
+- **dev-security**: Development security settings.
+
+Now, when you activate the `prod` profile group, both `prod-db` and `prod-security` profiles are activated, making the configuration simpler and more manageable.
+
+#### Why Use Profile Groups?
+
+- **Simplified Configuration**: Instead of listing multiple profiles each time you run your application, you can manage them using a single group.
+- **Better Organization**: Group related profiles together to clearly separate configuration for different environments (e.g., dev, prod, testing).
+- **Reduced Complexity**: Groups reduce the complexity of managing large configurations by activating several profiles with a single setting.
+
+Profile groups help streamline configuration management across environments, making it easier to maintain consistency in settings and avoid errors.
+
+
+
+
+
+
+
+
+### Programmatically Setting Profiles in Spring Boot
+
+In Spring Boot, you can programmatically set the active profiles through the `SpringApplication` or the `ApplicationContext` before the application starts. This can be useful when you want to dynamically choose profiles based on runtime conditions, external configuration, or system properties.
+
+Here are a few ways to set profiles programmatically:
+
+#### 1. Using `SpringApplication.setAdditionalProfiles()`
+
+You can set profiles programmatically by using the `SpringApplication` instance in the main class before the application starts:
+
+```java
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class MyApp {
+    public static void main(String[] args) {
+        SpringApplication app = new SpringApplication(MyApp.class);
+        app.setAdditionalProfiles("dev");  // Set active profile to 'dev'
+        app.run(args);
+    }
+}
+```
+
+In the above example, the `dev` profile will be activated when the application runs. You can specify multiple profiles by passing a comma-separated list:
+
+```java
+app.setAdditionalProfiles("dev", "qa");
+```
+
+#### 2. Using `ConfigurableApplicationContext`
+
+If you already have an `ApplicationContext` and want to set profiles after the context is created, you can do so using the `getEnvironment()` method:
+
+```java
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.ConfigurableApplicationContext;
+
+@SpringBootApplication
+public class MyApp {
+    public static void main(String[] args) {
+        ConfigurableApplicationContext context = SpringApplication.run(MyApp.class, args);
+        context.getEnvironment().setActiveProfiles("prod");  // Set active profile to 'prod'
+    }
+}
+```
+
+However, this approach is less common since profiles should ideally be set before the context is created.
+
+#### 3. Using `EnvironmentPostProcessor`
+
+For more advanced scenarios, you can implement the `EnvironmentPostProcessor` interface to set profiles before the Spring `Environment` is fully configured. This allows you to programmatically modify profiles based on custom logic:
+
+```java
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.env.EnvironmentPostProcessor;
+import org.springframework.core.env.ConfigurableEnvironment;
+
+public class CustomProfileEnvironmentPostProcessor implements EnvironmentPostProcessor {
+
+    @Override
+    public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
+        environment.addActiveProfile("custom");  // Add a custom profile
+    }
+}
+```
+
+To use the `EnvironmentPostProcessor`, you need to register it in a `META-INF/spring.factories` file:
+
+```properties
+org.springframework.boot.env.EnvironmentPostProcessor=com.example.CustomProfileEnvironmentPostProcessor
+```
+
+#### 4. Setting Profiles via `ApplicationListener`
+
+You can also set profiles within an event listener that listens for the `ApplicationEnvironmentPreparedEvent`:
+
+```java
+import org.springframework.boot.context.event.ApplicationEnvironmentPreparedEvent;
+import org.springframework.context.ApplicationListener;
+import org.springframework.core.env.ConfigurableEnvironment;
+
+public class ProfileListener implements ApplicationListener<ApplicationEnvironmentPreparedEvent> {
+
+    @Override
+    public void onApplicationEvent(ApplicationEnvironmentPreparedEvent event) {
+        ConfigurableEnvironment environment = event.getEnvironment();
+        environment.setActiveProfiles("test");  // Set active profile to 'test'
+    }
+}
+```
+
+#### Summary
+
+- **`setAdditionalProfiles()`**: A simple and recommended way to set profiles programmatically using the `SpringApplication`.
+- **`setActiveProfiles()` with `ConfigurableApplicationContext`**: Useful if you need to set profiles after the application context is started.
+- **`EnvironmentPostProcessor`**: For advanced scenarios where you need to modify profiles dynamically before the environment is fully configured.
+- **`ApplicationListener`**: Allows setting profiles based on specific events during application startup.
+
+These methods offer flexibility in dynamically configuring profiles based on various runtime conditions.
+
+
+
+
+
+### Profile-specific Configuration Files in Spring Boot
+
+In Spring Boot, you can define configuration files that are specific to different profiles. This is useful when you want to provide environment-specific settings, like database credentials, log levels, or API endpoints for different stages like development, testing, and production.
+
+#### Naming Profile-specific Configuration Files
+
+Spring Boot supports the following formats for profile-specific configuration files:
+
+1. **`application-{profile}.properties`**: Use this format for property files.
+2. **`application-{profile}.yml`**: Use this format for YAML files.
+
+Here, `{profile}` corresponds to the active profile.
+
+For example, if you have a profile named `dev`, you can create a file called:
+
+- `application-dev.properties` for property files
+- `application-dev.yml` for YAML files
+
+#### Example
+
+If you have the following profiles:
+
+- **`application-dev.properties`**: For development environment configuration
+- **`application-prod.properties`**: For production environment configuration
+
+##### `application-dev.properties`:
+```properties
+server.port=8081
+spring.datasource.url=jdbc:mysql://localhost:3306/dev_db
+spring.datasource.username=dev_user
+spring.datasource.password=dev_pass
+```
+
+##### `application-prod.properties`:
+```properties
+server.port=8080
+spring.datasource.url=jdbc:mysql://prod-server:3306/prod_db
+spring.datasource.username=prod_user
+spring.datasource.password=prod_pass
+```
+
+#### Activating Profiles
+
+You can activate a specific profile in various ways:
+
+1. **Via Command Line**:
+   You can pass the active profile while running the application:
+
+   ```bash
+   java -jar myapp.jar --spring.profiles.active=prod
+   ```
+
+2. **Using Environment Variables**:
+   Set the `SPRING_PROFILES_ACTIVE` environment variable to the desired profile:
+
+   ```bash
+   export SPRING_PROFILES_ACTIVE=dev
+   ```
+
+3. **In `application.properties`**:
+   You can also set the default active profile in the `application.properties` file:
+
+   ```properties
+   spring.profiles.active=dev
+   ```
+
+4. **Programmatically**:
+   You can set the active profile programmatically within your main class:
+
+   ```java
+   SpringApplication app = new SpringApplication(MyApplication.class);
+   app.setAdditionalProfiles("dev");
+   app.run(args);
+   ```
+
+#### Profile-specific YAML Files
+
+If you're using YAML instead of `.properties` files, you can create profile-specific `.yml` files like `application-dev.yml` and `application-prod.yml` to hold the profile-specific configuration.
+
+##### Example:
+
+```yaml
+# application-dev.yml
+server:
+  port: 8081
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/dev_db
+    username: dev_user
+    password: dev_pass
+```
+
+```yaml
+# application-prod.yml
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:mysql://prod-server:3306/prod_db
+    username: prod_user
+    password: prod_pass
+```
+
+#### Profile-specific Property Overrides
+
+If both a general configuration file (`application.properties` or `application.yml`) and a profile-specific file (`application-{profile}.properties` or `application-{profile}.yml`) define the same property, the profile-specific configuration will override the general one when the respective profile is active.
+
+For example, if `application.properties` contains:
+```properties
+server.port=9090
+```
+and `application-dev.properties` contains:
+```properties
+server.port=8081
+```
+then, when the `dev` profile is active, the application will run on port `8081` instead of `9090`.
+
+#### Summary
+
+- Profile-specific configuration files allow you to manage environment-specific settings.
+- You can use `application-{profile}.properties` or `application-{profile}.yml` for profile-specific configurations.
+- Profiles can be activated via the command line, environment variables, `application.properties`, or programmatically.
+- Profile-specific properties will override general configuration properties when the respective profile is active.
