@@ -1299,3 +1299,2959 @@ public class MyCustomHealthIndicator implements HealthIndicator {
 ### Summary
 
 Spring Boot's admin features, particularly through Actuator and Spring Boot Admin, provide powerful tools for monitoring and managing applications. You can easily expose metrics, create custom endpoints, and secure your application, enabling effective administration and oversight.
+
+
+
+
+# External Application Properties
+
+In Spring Boot, **external application properties** allow you to manage configuration settings outside your application's packaged code. This makes it easier to modify settings without redeploying your application, which is especially useful in production environments.
+
+### How to Use External Application Properties
+
+1. **Location of External Properties**:
+   - External properties can be placed in various locations, and Spring Boot checks these locations in a specific order:
+     - **Classpath**: `application.properties` or `application.yml` files located in `src/main/resources`.
+     - **External Files**: You can place property files in a specified external directory. For example:
+       ```bash
+       java -jar myapp.jar --spring.config.location=/path/to/config/
+       ```
+     - **Configuration Directory**: You can use `/config/` directory in your application's root. For instance, `config/application.properties`.
+
+2. **Environment Variable**:
+   - You can set properties using environment variables, which Spring Boot automatically maps to configuration properties.
+   - For example, setting an environment variable:
+     ```bash
+     export SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/mydb
+     ```
+
+3. **Command-Line Arguments**:
+   - You can override properties using command-line arguments when starting your application:
+     ```bash
+     java -jar myapp.jar --server.port=8081
+     ```
+
+4. **Using `@PropertySource`**:
+   - You can load additional properties files within your Spring configuration using the `@PropertySource` annotation.
+   - Example:
+     ```java
+     import org.springframework.context.annotation.Configuration;
+     import org.springframework.context.annotation.PropertySource;
+
+     @Configuration
+     @PropertySource("file:/path/to/external.properties")
+     public class ExternalConfig {
+     }
+     ```
+
+5. **Profiles for Different Environments**:
+   - Spring Boot allows you to define profile-specific properties to separate configurations for different environments (e.g., development, testing, production).
+   - For example, you can have `application-dev.properties` and `application-prod.properties`.
+   - Activate a profile using:
+     ```bash
+     java -jar myapp.jar --spring.profiles.active=dev
+     ```
+
+6. **Property Placeholder**:
+   - You can use `${}` to reference other properties within your external properties files.
+   - Example:
+     ```properties
+     db.url=jdbc:mysql://${DB_HOST}:${DB_PORT}/mydb
+     ```
+
+7. **Configuration with `@ConfigurationProperties`**:
+   - You can map external properties directly to a Java class using the `@ConfigurationProperties` annotation, which allows for structured access to your configuration.
+   - Example:
+     ```java
+     import org.springframework.boot.context.properties.ConfigurationProperties;
+     import org.springframework.stereotype.Component;
+
+     @Component
+     @ConfigurationProperties(prefix = "app")
+     public class AppConfig {
+         private String name;
+         private String version;
+
+         // getters and setters
+     }
+     ```
+
+### Summary
+
+External application properties in Spring Boot provide a flexible way to manage configuration settings outside of your application package. This makes it easier to adapt to different environments and modify settings without the need for redeployment. You can use a combination of external files, environment variables, command-line arguments, and profile-specific properties to achieve this.
+
+
+
+
+# Wildcard Locations
+
+If a config file location includes the * character for the last path segment, it is considered a wildcard location. Wildcards are expanded when the config is loaded so that immediate subdirectories are also checked. Wildcard locations are particularly useful in an environment such as Kubernetes when there are multiple sources of config properties.
+
+For example, if you have some Redis configuration and some MySQL configuration, you might want to keep those two pieces of configuration separate, while requiring that both those are present in an application.properties file. This might result in two separate application.properties files mounted at different locations such as /config/redis/application.properties and /config/mysql/application.properties. In such a case, having a wildcard location of config/*/, will result in both files being processed.
+
+By default, Spring Boot includes config/*/ in the default search locations. It means that all subdirectories of the /config directory outside of your jar will be searched.
+
+You can use wildcard locations yourself with the spring.config.location and spring.config.additional-location properties.
+
+
+
+# Profile Specific Files
+
+As well as application property files, Spring Boot will also attempt to load profile-specific files using the naming convention application-{profile}. For example, if your application activates a profile named prod and uses YAML files, then both application.yaml and application-prod.yaml will be considered.
+
+Profile-specific properties are loaded from the same locations as standard application.properties, with profile-specific files always overriding the non-specific ones. If several profiles are specified, a last-wins strategy applies. For example, if profiles prod,live are specified by the spring.profiles.active property, values in application-prod.properties can be overridden by those in application-live.properties.
+
+
+# Importing Additional Data
+Application properties may import further config data from other locations using the spring.config.import property. Imports are processed as they are discovered, and are treated as additional documents inserted immediately below the one that declares the import.
+
+For example, you might have the following in your classpath application.properties file:
+
+```
+spring.application.name=myapp
+spring.config.import=optional:file:./dev.properties
+```
+
+
+
+# Importing Extensionless Files
+
+
+In Spring Boot, importing extensionless files refers to loading configuration properties or resources that do not have a specific file extension, such as `.properties` or `.yml`. This can be useful for custom configurations or when working with files generated by other systems.
+
+### How to Import Extensionless Files
+
+Here’s how you can manage and import extensionless files in a Spring Boot application:
+
+#### 1. Using `@PropertySource`
+
+You can use the `@PropertySource` annotation to load properties from extensionless files. However, note that Spring’s default behavior requires files to have a recognized extension, but you can still load them as long as you specify the correct path.
+
+**Example**:
+```java
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.PropertySource;
+
+@Configuration
+@PropertySource("file:/path/to/config/extensionless-config")
+public class CustomConfig {
+    // Your configuration code
+}
+```
+
+Make sure that the content of the extensionless file follows the key-value format expected by Spring properties.
+
+#### 2. Using `ResourceLoader`
+
+You can also load an extensionless file programmatically using `ResourceLoader` and read its content. This is particularly useful if you need to parse or process the file in a specific way.
+
+**Example**:
+```java
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
+import org.springframework.stereotype.Component;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
+@Component
+public class ExtensionlessFileLoader {
+
+    @Autowired
+    private ResourceLoader resourceLoader;
+
+    public String loadFile() throws IOException {
+        Resource resource = resourceLoader.getResource("file:/path/to/config/extensionless-config");
+        return new String(Files.readAllBytes(Paths.get(resource.getURI())));
+    }
+}
+```
+
+#### 3. Using `@Value` to Load Properties
+
+If you have simple key-value pairs in an extensionless file, you can load values directly using the `@Value` annotation after ensuring the file is imported correctly.
+
+**Example**:
+```java
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+@Component
+public class MyConfig {
+
+    @Value("${my.custom.property}")
+    private String customProperty;
+
+    // Getter method for customProperty
+}
+```
+
+#### 4. Using Spring Cloud Config
+
+If you are using Spring Cloud Config, you can load configuration from various sources, including custom files or repositories, regardless of the file extension. This allows for greater flexibility when managing configurations across distributed systems.
+
+### Summary
+
+While Spring Boot doesn’t natively support extensionless files in the same way as traditional `.properties` or `.yml` files, you can still manage and load these files using `@PropertySource`, `ResourceLoader`, or other means. This gives you the flexibility to work with custom configurations as needed.
+
+
+
+
+# Property Placeholders
+
+
+Property placeholders in Spring Boot allow you to reference and use properties defined in your configuration files (like `application.properties` or `application.yml`) within your application. This is useful for dynamically injecting configuration values into your beans and other components.
+
+### How to Use Property Placeholders
+
+1. **Basic Syntax**:
+   - Use the `${}` syntax to reference a property.
+   - Example:
+     ```properties
+     app.name=MyApp
+     app.version=1.0
+     ```
+   - In your Java code:
+     ```java
+     @Value("${app.name}")
+     private String appName;
+
+     @Value("${app.version}")
+     private String appVersion;
+     ```
+
+2. **Default Values**:
+   - You can provide default values in case the property is not found.
+   - Syntax: `${propertyName:defaultValue}`
+   - Example:
+     ```properties
+     app.timeout=5000
+     ```
+   - In your code:
+     ```java
+     @Value("${app.timeout:3000}") // Default to 3000 if not found
+     private int timeout;
+     ```
+
+3. **Property Placeholders in YAML**:
+   - The same syntax works in `application.yml` files.
+   - Example:
+     ```yaml
+     app:
+       name: MyApp
+       version: 1.0
+     ```
+   - In your code:
+     ```java
+     @Value("${app.name}")
+     private String appName;
+     ```
+
+4. **Nested Properties**:
+   - You can access nested properties using the dot notation.
+   - Example:
+     ```yaml
+     database:
+       url: jdbc:mysql://localhost:3306/mydb
+       username: user
+       password: pass
+     ```
+   - In your code:
+     ```java
+     @Value("${database.url}")
+     private String dbUrl;
+     ```
+
+5. **Using `@ConfigurationProperties`**:
+   - For structured configurations, you can use `@ConfigurationProperties` to map properties to a Java class.
+   - Example:
+     ```java
+     import org.springframework.boot.context.properties.ConfigurationProperties;
+     import org.springframework.stereotype.Component;
+
+     @Component
+     @ConfigurationProperties(prefix = "app")
+     public class AppConfig {
+         private String name;
+         private String version;
+
+         // Getters and setters
+     }
+     ```
+
+6. **Environment Variables**:
+   - Property placeholders can also be resolved from environment variables. For example, if you have:
+     ```properties
+     app.name=${MY_APP_NAME}
+     ```
+   - You can set the environment variable `MY_APP_NAME` in your operating system, and Spring will inject its value.
+
+7. **Profile-Specific Properties**:
+   - You can define properties specific to different profiles (like `application-dev.properties`).
+   - Activate a profile using:
+     ```bash
+     java -jar myapp.jar --spring.profiles.active=dev
+     ```
+
+### Summary
+
+Property placeholders in Spring Boot provide a flexible way to manage configuration values by referencing them in your code. You can define properties in various formats, use default values, and leverage structured configurations with `@ConfigurationProperties`. This enhances the maintainability and flexibility of your applications.
+
+
+
+# Working With Multi-Document Files
+
+
+In Spring Boot, multi-document files refer to configuration files, particularly YAML files, that contain multiple sets of configurations separated by `---`. This is useful when you want to define different configurations, such as environment-specific settings, in a single file.
+
+### Multi-Document YAML Files
+
+YAML supports multiple documents within a single file. Each document is separated by `---` (three hyphens). In a Spring Boot application, this can be used to group different sets of configurations, typically for different profiles or specific use cases.
+
+### Example of a Multi-Document YAML File
+
+Here’s how a multi-document YAML file looks in Spring Boot:
+
+```yaml
+# Document 1: Default configuration
+server:
+  port: 8080
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/mydb
+    username: user
+    password: pass
+
+---
+# Document 2: Profile-specific configuration (e.g., for dev)
+spring:
+  profiles: dev
+server:
+  port: 9090
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/mydb_dev
+    username: dev_user
+    password: dev_pass
+
+---
+# Document 3: Profile-specific configuration (e.g., for prod)
+spring:
+  profiles: prod
+server:
+  port: 8081
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/mydb_prod
+    username: prod_user
+    password: prod_pass
+```
+
+### How It Works
+
+1. **Default Document**:
+   - The first document contains the default settings for the application (e.g., port `8080` and default database settings).
+   - If no profile is active, Spring Boot will use these settings.
+
+2. **Profile-Specific Documents**:
+   - The second and third documents are specific to the `dev` and `prod` profiles. These configurations are activated when the respective profiles are active.
+   - You can activate a profile by setting it in the application properties or passing it as an argument:
+     ```bash
+     java -jar myapp.jar --spring.profiles.active=dev
+     ```
+
+3. **Overriding Behavior**:
+   - Spring Boot will load all documents but will apply the profile-specific configurations only if the respective profile is active.
+   - Profile-specific configurations can override the default settings from the first document.
+
+### Using Multi-Document Files in `application.yml`
+
+- Spring Boot will automatically parse multi-document files in `application.yml` and apply the appropriate document based on the active profile.
+- This reduces the need to maintain separate configuration files like `application-dev.yml` or `application-prod.yml`, as all configurations can be contained within one file.
+
+### Multi-Document for Other Use Cases
+
+Multi-document files can also be useful for separating configurations for different microservices or modules in a monolithic application. Each document can represent configurations for a different service, allowing you to keep all configurations in one place while maintaining separation of concerns.
+
+### Summary
+
+Multi-document YAML files in Spring Boot are a powerful way to organize and manage different sets of configurations within a single file. By separating each configuration block with `---` and using profiles, you can easily switch between different configurations for different environments (like `dev` or `prod`). This helps in maintaining a cleaner and more flexible configuration setup.
+
+
+# Activation Properties
+
+In Spring Boot, **activation properties** are used to activate certain behaviors or configurations based on specific conditions, typically through profiles or other conditional mechanisms. The most common way to activate configurations is by using **profiles** with properties like `spring.profiles.active`. Here's an overview of how activation properties work in Spring Boot:
+
+### 1. **Activating Profiles**
+
+Profiles in Spring Boot allow you to define different configurations for different environments (e.g., development, production). Activation properties enable or disable these configurations based on certain conditions.
+
+- **`spring.profiles.active`**: This property activates one or more profiles.
+  
+  Example (in `application.properties` or `application.yml`):
+  ```properties
+  spring.profiles.active=dev
+  ```
+
+  - You can activate multiple profiles by separating them with commas:
+    ```properties
+    spring.profiles.active=dev,debug
+    ```
+
+  - Alternatively, you can activate profiles using command-line arguments:
+    ```bash
+    java -jar myapp.jar --spring.profiles.active=prod
+    ```
+
+### 2. **Activating Profiles with `spring.profiles.include`**
+
+You can include other profiles by using the `spring.profiles.include` property, which allows you to activate additional profiles on top of the currently active one.
+
+Example (in `application.properties`):
+```properties
+spring.profiles.include=common
+```
+
+This is useful when you want to share some configuration across different profiles (like `common` settings used in both `dev` and `prod`).
+
+### 3. **Activating Profiles Based on Environment**
+
+You can use activation properties inside your YAML files to activate specific profiles depending on the environment. This can be done using the `spring.profiles` key.
+
+Example (in `application.yml`):
+```yaml
+# Default configuration
+server:
+  port: 8080
+
+---
+spring:
+  profiles: dev
+server:
+  port: 8081
+
+---
+spring:
+  profiles: prod
+server:
+  port: 8082
+```
+
+In this example, when the `dev` profile is active, the server will run on port `8081`. If the `prod` profile is active, it will run on port `8082`.
+
+### 4. **Conditional Activation of Beans Using `@Profile`**
+
+You can also activate specific beans in your Spring Boot application using the `@Profile` annotation. This ensures that certain beans are only loaded when specific profiles are active.
+
+Example:
+```java
+@Profile("dev")
+@Bean
+public DataSource devDataSource() {
+    return new HikariDataSource();
+}
+```
+
+In this example, the `devDataSource` bean will only be created if the `dev` profile is active.
+
+### 5. **`spring.main.allow-bean-definition-overriding`**
+
+This property allows overriding bean definitions between different profiles or configurations. By default, Spring Boot does not allow bean definition overrides, but you can enable it with this property:
+
+```properties
+spring.main.allow-bean-definition-overriding=true
+```
+
+This can be useful when different profiles or configurations define beans with the same name but different implementations.
+
+### 6. **Activating Auto-Configurations with `@Conditional` Annotations**
+
+Spring Boot also supports activating specific auto-configurations based on conditions, such as the presence of certain classes or properties. This is done using the `@Conditional` annotations like `@ConditionalOnProperty`, `@ConditionalOnClass`, etc.
+
+Example:
+```java
+@ConditionalOnProperty(name = "feature.enabled", havingValue = "true")
+@Bean
+public MyFeatureBean myFeatureBean() {
+    return new MyFeatureBean();
+}
+```
+
+In this case, the `MyFeatureBean` will only be created if the property `feature.enabled=true` is set in the configuration.
+
+### 7. **Activation Based on Operating System or JDK Version**
+
+Spring Boot can activate certain configurations or beans depending on the operating system or the version of the JDK being used. This is done using `@Conditional` annotations, such as `@ConditionalOnOS` or `@ConditionalOnJava`.
+
+Example:
+```java
+@ConditionalOnJava(JavaVersion.EIGHT)
+@Bean
+public MyBean myBeanForJava8() {
+    return new MyBean();
+}
+```
+
+This bean will only be loaded if the application is running on Java 8.
+
+### Summary
+
+Activation properties in Spring Boot give you the flexibility to enable or disable specific profiles, beans, or configurations based on conditions. Whether you're switching between environments, including additional profiles, or conditionally loading beans, Spring Boot offers a wide range of tools to handle different configurations effectively.
+
+
+
+# Encrypting Properties
+
+In Spring Boot, sensitive properties like passwords, API keys, or secret tokens should not be stored in plain text in configuration files. To secure sensitive information, **encrypting properties** is a good practice. Spring Boot doesn't provide built-in property encryption by default, but it can be achieved through external tools or additional Spring libraries, such as **Spring Cloud Config** with encryption support.
+
+Here’s how you can encrypt properties in a Spring Boot application:
+
+### 1. **Using Spring Cloud Config for Property Encryption**
+
+**Spring Cloud Config** provides server and client-side support for externalized configuration in a distributed system. It also allows properties to be encrypted and decrypted transparently.
+
+#### Encrypting a Property
+
+To encrypt properties, Spring Cloud Config needs to be set up. You can use a symmetric or asymmetric key for encryption.
+
+- First, set up Spring Cloud Config Server.
+- Add the `spring-cloud-starter-config` dependency to your `pom.xml` or `build.gradle`.
+
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-config</artifactId>
+</dependency>
+```
+
+#### Using Symmetric Key Encryption
+
+With a symmetric key, you can encrypt properties using the following command:
+
+```bash
+curl localhost:8888/encrypt -d mysecretpassword
+```
+
+This will return the encrypted value, which you can then store in your configuration:
+
+```properties
+db.password={cipher}AQABAgbXZq...
+```
+
+#### Using Asymmetric Key Encryption
+
+To use asymmetric encryption, you’ll need a key pair (private and public key). You can configure the server to use these keys to encrypt/decrypt the properties.
+
+#### Decrypting Properties at Runtime
+
+Once the properties are encrypted, Spring Cloud Config will automatically decrypt them at runtime. You just need to ensure that your application has access to the decryption keys (symmetric or asymmetric).
+
+### 2. **Manual Encryption and Decryption with Jasypt**
+
+If you don't want to use Spring Cloud Config, you can use **Jasypt** (Java Simplified Encryption). It provides an easy-to-use library for encrypting and decrypting properties in Spring Boot.
+
+#### Step-by-Step Setup for Jasypt
+
+1. **Add Jasypt Dependency**:
+   Add the following dependency to your `pom.xml` file:
+
+   ```xml
+   <dependency>
+       <groupId>com.github.ulisesbocchio</groupId>
+       <artifactId>jasypt-spring-boot-starter</artifactId>
+       <version>3.0.4</version>
+   </dependency>
+   ```
+
+2. **Encrypt a Property**:
+   Use the Jasypt CLI tool to encrypt your property values.
+
+   ```bash
+   encrypt input="mysecretpassword" password="encryption_key"
+   ```
+
+   This command will return the encrypted value.
+
+3. **Store the Encrypted Value**:
+   Store the encrypted value in your `application.properties` or `application.yml` file using the following format:
+
+   ```properties
+   db.password=ENC(encrypted_value_here)
+   ```
+
+4. **Configure the Encryption Key**:
+   Set the decryption key in the environment or system properties so that Jasypt can decrypt the properties at runtime:
+
+   ```bash
+   java -jar myapp.jar --jasypt.encryptor.password=encryption_key
+   ```
+
+5. **Automatic Decryption**:
+   Jasypt will automatically decrypt any properties wrapped with `ENC(...)` when the application starts.
+
+### 3. **Using Custom Encryption/Decryption Logic**
+
+You can also implement custom encryption and decryption logic if you have specific security requirements.
+
+Here’s a simple example:
+
+#### Encrypting Properties
+
+1. **Encrypt Values**:
+   Write a utility class to encrypt the values before saving them in properties.
+
+2. **Decrypt Values at Runtime**:
+   You can create a custom property source or use `@PostConstruct` to decrypt properties at runtime.
+
+```java
+@Value("${db.password}")
+private String encryptedPassword;
+
+@PostConstruct
+public void init() {
+    String decryptedPassword = decrypt(encryptedPassword);
+    // Use the decrypted password in your application
+}
+```
+
+### 4. **Environment Variables for Sensitive Data**
+
+As an alternative to encrypting properties directly, it is often recommended to use **environment variables** for sensitive information like passwords and API keys. This keeps them out of configuration files altogether.
+
+Example in `application.properties`:
+
+```properties
+db.password=${DB_PASSWORD}
+```
+
+You can set the environment variable when running the application:
+
+```bash
+DB_PASSWORD=mysecretpassword java -jar myapp.jar
+```
+
+### 5. **Using Vault for Secret Management**
+
+You can also use secret management tools like **HashiCorp Vault** to manage and inject secrets into your Spring Boot application securely.
+
+Spring Boot has built-in support for **Vault**:
+
+1. Add the necessary dependency:
+
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-vault-config</artifactId>
+</dependency>
+```
+
+2. Configure your application to retrieve secrets from Vault, and Spring Boot will handle the decryption.
+
+### Summary
+
+- **Spring Cloud Config** provides easy property encryption/decryption with symmetric or asymmetric keys.
+- **Jasypt** offers simple, automatic property decryption for Spring Boot.
+- **Environment variables** are a good practice for keeping sensitive data out of your configuration files.
+- **Vault** or other secret management tools can be used for secure, centralized secret management.
+
+By using these methods, you can ensure that sensitive information in your Spring Boot applications is securely managed.
+
+
+
+# Working With YAML
+
+YAML (YAML Ain't Markup Language) is a human-readable data serialization format that is often used for configuration files. Spring Boot supports YAML for externalized configuration, allowing you to define application properties in a structured way. Here’s a guide on how to work with YAML in Spring Boot:
+
+### 1. **Creating a YAML Configuration File**
+
+You can create a YAML file named `application.yml` (or `application.yaml`) in the `src/main/resources` directory of your Spring Boot project. Here’s a simple example:
+
+```yaml
+server:
+  port: 8080
+
+spring:
+  application:
+    name: myapp
+
+logging:
+  level:
+    root: INFO
+    com:
+      example: DEBUG
+
+datasource:
+  url: jdbc:mysql://localhost:3306/mydb
+  username: user
+  password: secret
+```
+
+### 2. **Hierarchy and Structure**
+
+YAML uses indentation to define structure, so it’s crucial to maintain consistent spacing. Each level of indentation represents a different level in the hierarchy. In the example above:
+
+- `server`, `spring`, `logging`, and `datasource` are top-level properties.
+- Nested properties are defined with indentation.
+
+### 3. **Data Types in YAML**
+
+YAML supports various data types, including:
+
+- **Strings**: Simple text values (e.g., `name: "John Doe"`).
+- **Numbers**: Integer or float values (e.g., `age: 30`).
+- **Booleans**: `true` or `false` (e.g., `enabled: true`).
+- **Lists**: Defined with a hyphen (`-`) (e.g., `fruits: [apple, banana, orange]`).
+- **Maps**: Key-value pairs (e.g., `person: {name: "John", age: 30}`).
+
+### 4. **Accessing YAML Properties in Code**
+
+You can access the properties defined in your `application.yml` file using the `@Value` annotation or by binding to a configuration class.
+
+#### Using `@Value`
+
+```java
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+@Component
+public class MyConfig {
+
+    @Value("${spring.application.name}")
+    private String appName;
+
+    @Value("${server.port}")
+    private int serverPort;
+
+    // Getters and setters
+}
+```
+
+#### Using Configuration Properties
+
+You can create a configuration properties class to bind multiple properties:
+
+```java
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
+
+@Component
+@ConfigurationProperties(prefix = "datasource")
+public class DataSourceConfig {
+
+    private String url;
+    private String username;
+    private String password;
+
+    // Getters and setters
+}
+```
+
+### 5. **Profiles in YAML**
+
+Spring Boot allows you to define different profiles in your YAML files, enabling you to set different configurations for development, testing, and production environments. You can create profile-specific YAML files like `application-dev.yml`, `application-test.yml`, and `application-prod.yml`.
+
+Example of `application-dev.yml`:
+
+```yaml
+server:
+  port: 8081
+```
+
+Example of `application-prod.yml`:
+
+```yaml
+server:
+  port: 8080
+```
+
+You can activate a profile using the command line:
+
+```bash
+java -jar myapp.jar --spring.profiles.active=dev
+```
+
+### 6. **Merging YAML Files**
+
+You can also use multiple YAML files. For example, you can have a common `application.yml` and profile-specific files like `application-dev.yml` and `application-prod.yml`. Spring Boot will merge these configurations, allowing you to override properties as needed.
+
+### 7. **Commenting in YAML**
+
+You can add comments in YAML using the `#` symbol. For example:
+
+```yaml
+# This is a comment
+server:
+  port: 8080 # The server port
+```
+
+### 8. **Validating YAML Syntax**
+
+YAML files must adhere to correct syntax and structure. You can use online YAML validators or IDEs that support YAML to ensure your files are valid.
+
+### Summary
+
+- **YAML** is a human-readable format for configuration files in Spring Boot.
+- You can create an `application.yml` file to define properties.
+- Access properties in your code using `@Value` or by binding to configuration classes.
+- Use profiles to define different configurations for various environments.
+- YAML supports lists, maps, comments, and various data types.
+
+By using YAML for your Spring Boot configuration, you can organize and manage your application settings in a clear and concise manner.
+
+
+# Configuring Random Values
+
+In Spring Boot, you can generate random values for properties in your configuration files. This is particularly useful when you want to assign unique values to certain properties without hardcoding them. Spring Boot provides a convenient way to generate random integers, longs, or UUIDs using the `random` value placeholder.
+
+### Generating Random Values in `application.properties` or `application.yml`
+
+Spring Boot supports the following placeholders for random values:
+- `${random.int}`: Generates a random integer.
+- `${random.int(min,max)}`: Generates a random integer within a specific range.
+- `${random.long}`: Generates a random long value.
+- `${random.uuid}`: Generates a random UUID.
+
+### Examples in `application.properties`
+
+Here’s how you can generate random values in `application.properties`:
+
+```properties
+# Random integer
+myapp.random.int=${random.int}
+
+# Random integer between 100 and 200
+myapp.random.int.range=${random.int(100,200)}
+
+# Random long value
+myapp.random.long=${random.long}
+
+# Random UUID
+myapp.random.uuid=${random.uuid}
+```
+
+### Examples in `application.yml`
+
+Here’s how you can generate random values in `application.yml`:
+
+```yaml
+myapp:
+  random:
+    int: ${random.int}
+    int-range: ${random.int(100,200)}
+    long: ${random.long}
+    uuid: ${random.uuid}
+```
+
+### Accessing Random Values in Code
+
+You can access these random values in your Spring Boot application using the `@Value` annotation or through configuration properties.
+
+#### Using `@Value`
+
+```java
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+@Component
+public class RandomValueConfig {
+
+    @Value("${myapp.random.int}")
+    private int randomInt;
+
+    @Value("${myapp.random.int-range}")
+    private int randomIntRange;
+
+    @Value("${myapp.random.long}")
+    private long randomLong;
+
+    @Value("${myapp.random.uuid}")
+    private String randomUuid;
+
+    // Getters for the values
+    public int getRandomInt() {
+        return randomInt;
+    }
+
+    public int getRandomIntRange() {
+        return randomIntRange;
+    }
+
+    public long getRandomLong() {
+        return randomLong;
+    }
+
+    public String getRandomUuid() {
+        return randomUuid;
+    }
+}
+```
+
+#### Using Configuration Properties
+
+You can also bind these values to a configuration class:
+
+```java
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
+
+@Component
+@ConfigurationProperties(prefix = "myapp.random")
+public class RandomValueProperties {
+
+    private int int;
+    private int intRange;
+    private long long;
+    private String uuid;
+
+    // Getters and setters
+}
+```
+
+### Example Output
+
+When the application starts, the random values will be generated and can be accessed within your application:
+
+```plaintext
+Random int: 67583
+Random int-range (100-200): 150
+Random long: 5768453276492038447
+Random UUID: 6d41c298-6b98-4a53-93e1-0123456789ab
+```
+
+### Use Cases for Random Values
+- **Testing purposes**: Generate random data for testing without hardcoding values.
+- **Unique IDs**: Generate UUIDs for use in session tokens or unique identifiers.
+- **Dynamic configurations**: Use random port numbers or other configurations that require uniqueness at runtime.
+
+By using random values, you can dynamically assign properties that change each time the application is run, which is especially useful in test environments or when you need unique configurations.
+
+
+# Configuring System Environment Properties
+
+### Configuring System Environment Properties in Spring Boot
+
+Spring Boot allows you to configure your application using system environment variables. These properties can be defined at runtime, and Spring Boot automatically loads them into the application’s environment, making them accessible within the application.
+
+### How to Configure System Environment Properties
+
+#### 1. **Using Command Line Arguments**
+
+You can pass system properties directly when running your Spring Boot application from the command line:
+
+```bash
+$ java -Dproperty.name=value -jar myapp.jar
+```
+
+For example, to set a custom port for the application:
+
+```bash
+$ java -Dserver.port=8081 -jar myapp.jar
+```
+
+#### 2. **Using Environment Variables**
+
+Environment variables can also be used to configure properties. Spring Boot will automatically bind them to your application's configuration.
+
+Example in Unix-like systems:
+
+```bash
+$ export SPRING_DATASOURCE_URL=jdbc:mysql://localhost/testdb
+$ export SPRING_DATASOURCE_USERNAME=root
+$ export SPRING_DATASOURCE_PASSWORD=secret
+$ java -jar myapp.jar
+```
+
+#### 3. **Using a `.env` File**
+
+Another common way to configure system properties is to use a `.env` file with environment-specific values.
+
+Example `.env` file:
+
+```plaintext
+SPRING_DATASOURCE_URL=jdbc:mysql://localhost/testdb
+SPRING_DATASOURCE_USERNAME=root
+SPRING_DATASOURCE_PASSWORD=secret
+```
+
+Then, you can use a library like `dotenv` to load the environment variables.
+
+#### 4. **Accessing System Environment Properties in Code**
+
+System environment properties can be injected into your Spring components using the `@Value` annotation or via configuration properties.
+
+Example with `@Value`:
+
+```java
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+@Component
+public class DataSourceConfig {
+
+    @Value("${spring.datasource.url}")
+    private String dataSourceUrl;
+
+    @Value("${spring.datasource.username}")
+    private String username;
+
+    @Value("${spring.datasource.password}")
+    private String password;
+
+    // Getters for the properties
+}
+```
+
+#### 5. **Priority of System Environment Properties**
+
+Spring Boot uses the following order of precedence for properties, from highest to lowest:
+1. **Command Line Arguments** (e.g., `--server.port=8080`)
+2. **Java System Properties** (e.g., `-Dserver.port=8080`)
+3. **OS Environment Variables** (e.g., `SPRING_DATASOURCE_URL`)
+4. **Application Property Files** (e.g., `application.properties` or `application.yml`)
+5. **Default Properties** (defined in Spring Boot itself)
+
+This allows you to easily override configurations by setting environment variables or command line arguments.
+
+### Example Use Cases for System Environment Properties
+
+- **Database configurations**: Setting up the database URL, username, and password in different environments (development, testing, production).
+- **Port configuration**: Changing the default port of the application based on the environment.
+- **External services**: Configuring external API URLs and tokens securely through environment variables.
+
+By leveraging system environment properties, you can dynamically configure your Spring Boot application based on the environment in which it is deployed.
+
+---
+
+
+
+
+
+# Type-safe Configuration Properties
+
+
+### Type-safe Configuration Properties in Spring Boot
+
+In Spring Boot, **type-safe configuration** allows you to map configuration properties from external sources (such as `.properties` or `.yml` files) directly to Java objects. This ensures that the configuration is validated at compile-time and is easier to manage, especially when working with complex configurations.
+
+Spring Boot supports **type-safe configuration** through the use of **`@ConfigurationProperties`** and **`@Value`** annotations, where `@ConfigurationProperties` is preferred for more structured configuration.
+
+### Steps to Create Type-safe Configuration Properties
+
+#### 1. **Define a Configuration Class**
+
+Create a POJO (Plain Old Java Object) with fields corresponding to the properties you want to map. You annotate the class with `@ConfigurationProperties`.
+
+```java
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@ConfigurationProperties(prefix = "myapp")
+public class MyAppProperties {
+
+    private String name;
+    private int port;
+    private Database database;
+
+    // Getters and setters
+
+    public static class Database {
+        private String url;
+        private String username;
+        private String password;
+
+        // Getters and setters
+    }
+}
+```
+
+In this example, the properties will be mapped to fields inside `MyAppProperties`, and the database properties will be mapped to a nested `Database` class.
+
+#### 2. **Enable Configuration Properties**
+
+You need to register your configuration class as a Spring bean using either `@EnableConfigurationProperties` in your main application class or by simply using `@ConfigurationProperties` with `@Configuration` (which will automatically register it).
+
+```java
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+
+@SpringBootApplication
+@EnableConfigurationProperties(MyAppProperties.class)
+public class MyAppApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(MyAppApplication.class, args);
+    }
+}
+```
+
+Alternatively, starting with Spring Boot 2.2, it’s enough to annotate the class with `@ConfigurationProperties` and `@Configuration`.
+
+#### 3. **Add Properties in `application.properties` or `application.yml`**
+
+Define your properties in `application.properties` or `application.yml`.
+
+##### Example in `application.properties`:
+
+```properties
+myapp.name=SpringApp
+myapp.port=8080
+myapp.database.url=jdbc:mysql://localhost:3306/mydb
+myapp.database.username=root
+myapp.database.password=secret
+```
+
+##### Example in `application.yml`:
+
+```yaml
+myapp:
+  name: SpringApp
+  port: 8080
+  database:
+    url: jdbc:mysql://localhost:3306/mydb
+    username: root
+    password: secret
+```
+
+#### 4. **Access the Configuration Properties in Your Application**
+
+You can now inject the configuration class into your components and use the properties as type-safe fields.
+
+```java
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+@Component
+public class MyAppService {
+
+    private final MyAppProperties properties;
+
+    @Autowired
+    public MyAppService(MyAppProperties properties) {
+        this.properties = properties;
+    }
+
+    public void printConfig() {
+        System.out.println("App Name: " + properties.getName());
+        System.out.println("App Port: " + properties.getPort());
+        System.out.println("Database URL: " + properties.getDatabase().getUrl());
+    }
+}
+```
+
+### Binding List or Map Properties
+
+You can also bind complex types like lists or maps to configuration properties.
+
+#### Example of List Binding:
+
+```java
+@ConfigurationProperties(prefix = "myapp")
+public class MyAppProperties {
+
+    private List<String> servers;
+
+    // Getters and setters
+}
+```
+
+```yaml
+myapp:
+  servers:
+    - server1.example.com
+    - server2.example.com
+    - server3.example.com
+```
+
+#### Example of Map Binding:
+
+```java
+@ConfigurationProperties(prefix = "myapp")
+public class MyAppProperties {
+
+    private Map<String, String> users;
+
+    // Getters and setters
+}
+```
+
+```yaml
+myapp:
+  users:
+    admin: adminpassword
+    user: userpassword
+```
+
+### Validation of Configuration Properties
+
+Spring Boot allows you to validate the values of configuration properties using JSR-303 (Bean Validation API) annotations like `@NotNull`, `@Min`, `@Max`, etc.
+
+#### Example:
+
+```java
+import javax.validation.constraints.NotNull;
+
+@ConfigurationProperties(prefix = "myapp")
+public class MyAppProperties {
+
+    @NotNull
+    private String name;
+
+    @Min(1024)
+    @Max(65535)
+    private int port;
+
+    // Getters and setters
+}
+```
+
+To enable validation, you need to add `@Validated` to your configuration class:
+
+```java
+import org.springframework.validation.annotation.Validated;
+
+@Validated
+@ConfigurationProperties(prefix = "myapp")
+public class MyAppProperties {
+    // Fields, getters, and setters
+}
+```
+
+If any validation fails, Spring will throw an exception when the application starts.
+
+### Advantages of Type-safe Configuration Properties
+
+- **Type-safety**: You can catch configuration errors at compile-time.
+- **Structure**: Helps manage complex configuration data by mapping to nested POJOs.
+- **Validation**: Ensure your configuration values meet certain conditions before the application starts.
+- **Readability**: Structured access to configuration data makes it easier to maintain code.
+
+By using type-safe configuration properties, you ensure better readability, maintainability, and validation of your Spring Boot application's configuration settings.
+
+---
+
+# JavaBean Properties Binding
+
+
+### JavaBean Properties Binding in Spring Boot
+
+In Spring Boot, **JavaBean properties binding** allows you to map external configurations (like properties from `.properties` or `.yml` files) to fields in a Java class. This feature enables type-safe access to your application’s configuration and makes it easier to manage and validate configuration settings.
+
+Spring Boot achieves this binding automatically through its configuration properties binding mechanism, mainly using **`@ConfigurationProperties`**.
+
+### Key Concepts of JavaBean Properties Binding
+
+1. **POJO (Plain Old Java Object) Fields**: Your Java class should follow the JavaBean naming conventions with private fields and public getter and setter methods.
+   
+2. **Mapping Configuration**: Properties from configuration files (like `application.properties` or `application.yml`) can be mapped directly to fields in the POJO class using Spring Boot’s configuration properties support.
+
+3. **Property Names**: The property names in the configuration file are matched with the field names in the Java class. The format in the configuration file is typically **kebab-case** (`my-property`) or **dot-separated** (`my.property`), which is mapped to the corresponding **camelCase** fields in the Java class (`myProperty`).
+
+---
+
+### Steps for JavaBean Properties Binding
+
+#### 1. **Create a JavaBean Class**
+
+Create a POJO (Plain Old Java Object) that will represent the configuration properties.
+
+```java
+public class MyAppConfig {
+
+    private String appName;
+    private int timeout;
+    private DatabaseConfig database;
+
+    // Getters and Setters
+    public String getAppName() {
+        return appName;
+    }
+
+    public void setAppName(String appName) {
+        this.appName = appName;
+    }
+
+    public int getTimeout() {
+        return timeout;
+    }
+
+    public void setTimeout(int timeout) {
+        this.timeout = timeout;
+    }
+
+    public DatabaseConfig getDatabase() {
+        return database;
+    }
+
+    public void setDatabase(DatabaseConfig database) {
+        this.database = database;
+    }
+
+    // Nested class for Database properties
+    public static class DatabaseConfig {
+        private String url;
+        private String username;
+        private String password;
+
+        // Getters and Setters
+        public String getUrl() {
+            return url;
+        }
+
+        public void setUrl(String url) {
+            this.url = url;
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public void setUsername(String username) {
+            this.username = username;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+        }
+    }
+}
+```
+
+#### 2. **Annotate with `@ConfigurationProperties`**
+
+Use the `@ConfigurationProperties` annotation to indicate that this class will be used for binding configuration properties.
+
+```java
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@ConfigurationProperties(prefix = "myapp")
+public class MyAppConfig {
+    // Fields and nested classes as defined above
+}
+```
+
+#### 3. **Define Properties in `application.properties` or `application.yml`**
+
+Define your properties in the appropriate configuration file.
+
+**For `application.properties`:**
+
+```properties
+myapp.app-name=MySpringApp
+myapp.timeout=5000
+myapp.database.url=jdbc:mysql://localhost:3306/mydb
+myapp.database.username=root
+myapp.database.password=secret
+```
+
+**For `application.yml`:**
+
+```yaml
+myapp:
+  app-name: MySpringApp
+  timeout: 5000
+  database:
+    url: jdbc:mysql://localhost:3306/mydb
+    username: root
+    password: secret
+```
+
+#### 4. **Inject and Use the Configuration Class**
+
+You can now inject this configuration class into your Spring components to access the configuration values.
+
+```java
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+@Component
+public class MyAppService {
+
+    private final MyAppConfig config;
+
+    @Autowired
+    public MyAppService(MyAppConfig config) {
+        this.config = config;
+    }
+
+    public void displayConfig() {
+        System.out.println("App Name: " + config.getAppName());
+        System.out.println("Timeout: " + config.getTimeout());
+        System.out.println("Database URL: " + config.getDatabase().getUrl());
+    }
+}
+```
+
+#### 5. **Enable Configuration Properties**
+
+To make sure that Spring Boot scans and binds your `@ConfigurationProperties` class, you can use `@EnableConfigurationProperties` in your `SpringBootApplication` class, although this is not necessary from Spring Boot 2.2 onward, where `@ConfigurationProperties`-annotated classes are automatically detected.
+
+```java
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+
+@SpringBootApplication
+@EnableConfigurationProperties(MyAppConfig.class)
+public class MyApp {
+
+    public static void main(String[] args) {
+        SpringApplication.run(MyApp.class, args);
+    }
+}
+```
+
+### Nested Properties Binding
+
+The ability to bind nested properties is particularly powerful. In the above example, the `database` field in the `MyAppConfig` class is a nested object of type `DatabaseConfig`, and the corresponding properties (`myapp.database.url`, `myapp.database.username`, etc.) in the `application.properties` or `application.yml` file are automatically mapped.
+
+---
+
+### Advantages of JavaBean Properties Binding
+
+- **Type-safety**: You have type-safe access to configuration properties, avoiding errors due to misconfigurations.
+- **Structured Configuration**: Configuration can be easily organized into hierarchical structures (nested properties).
+- **Validation**: You can apply validation annotations like `@NotNull`, `@Min`, and `@Max` to ensure that the properties meet certain conditions before the application starts.
+
+By leveraging JavaBean properties binding, Spring Boot provides a robust way to manage and use application configuration in a structured and maintainable way.
+
+---
+
+# Constructor Binding
+
+### Constructor Binding in Spring Boot
+
+**Constructor Binding** in Spring Boot allows you to bind configuration properties directly to the constructor of a class instead of using setter methods. This is especially useful for immutable objects where fields are final and should only be set at the time of object creation.
+
+With constructor binding, the properties are injected through the constructor, making the object immutable, which is often a preferred approach in modern development for thread safety and predictability.
+
+### Steps for Constructor Binding
+
+#### 1. **Create a Class with Final Fields and Constructor**
+
+You can define your configuration class with final fields and a constructor to initialize them.
+
+```java
+public class MyAppConfig {
+
+    private final String appName;
+    private final int timeout;
+    private final DatabaseConfig database;
+
+    // Constructor to initialize final fields
+    public MyAppConfig(String appName, int timeout, DatabaseConfig database) {
+        this.appName = appName;
+        this.timeout = timeout;
+        this.database = database;
+    }
+
+    // Getters
+    public String getAppName() {
+        return appName;
+    }
+
+    public int getTimeout() {
+        return timeout;
+    }
+
+    public DatabaseConfig getDatabase() {
+        return database;
+    }
+
+    // Nested class for Database configuration
+    public static class DatabaseConfig {
+        private final String url;
+        private final String username;
+        private final String password;
+
+        public DatabaseConfig(String url, String username, String password) {
+            this.url = url;
+            this.username = username;
+            this.password = password;
+        }
+
+        public String getUrl() {
+            return url;
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+    }
+}
+```
+
+#### 2. **Use `@ConstructorBinding` Annotation**
+
+Annotate the class with `@ConstructorBinding` to tell Spring Boot that the class should be bound through its constructor.
+
+```java
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.ConstructorBinding;
+
+@ConstructorBinding
+@ConfigurationProperties(prefix = "myapp")
+public class MyAppConfig {
+    // Fields, constructor, and nested class as defined above
+}
+```
+
+#### 3. **Define Properties in `application.properties` or `application.yml`**
+
+You can define the properties in the configuration file as usual:
+
+**For `application.properties`:**
+
+```properties
+myapp.app-name=MySpringApp
+myapp.timeout=5000
+myapp.database.url=jdbc:mysql://localhost:3306/mydb
+myapp.database.username=root
+myapp.database.password=secret
+```
+
+**For `application.yml`:**
+
+```yaml
+myapp:
+  app-name: MySpringApp
+  timeout: 5000
+  database:
+    url: jdbc:mysql://localhost:3306/mydb
+    username: root
+    password: secret
+```
+
+#### 4. **Enable Constructor Binding in `@SpringBootApplication`**
+
+Ensure that constructor binding is enabled by using the `@EnableConfigurationProperties` annotation in your main application class.
+
+```java
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+
+@SpringBootApplication
+@EnableConfigurationProperties(MyAppConfig.class)
+public class MyApp {
+
+    public static void main(String[] args) {
+        SpringApplication.run(MyApp.class, args);
+    }
+}
+```
+
+#### 5. **Inject and Use the Configuration Class**
+
+You can inject the configuration class into your Spring components to access the configuration values:
+
+```java
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+@Component
+public class MyAppService {
+
+    private final MyAppConfig config;
+
+    @Autowired
+    public MyAppService(MyAppConfig config) {
+        this.config = config;
+    }
+
+    public void displayConfig() {
+        System.out.println("App Name: " + config.getAppName());
+        System.out.println("Timeout: " + config.getTimeout());
+        System.out.println("Database URL: " + config.getDatabase().getUrl());
+    }
+}
+```
+
+---
+
+### Advantages of Constructor Binding
+
+1. **Immutable Configuration**: Since fields are `final` and set only once through the constructor, it ensures immutability.
+   
+2. **Thread Safety**: Immutable objects are inherently thread-safe, which is important in multi-threaded environments.
+   
+3. **Cleaner Code**: It leads to cleaner, more concise code, as you don’t need setters or complex initialization logic.
+
+---
+
+Constructor binding is a modern approach in Spring Boot to handle type-safe configuration, especially when working with immutable objects. It adds clarity to how configuration properties are injected and provides benefits like immutability and thread safety.
+
+# Enabling @ConfigurationProperties-annotated Types
+### Enabling `@ConfigurationProperties`-annotated Types in Spring Boot
+
+In Spring Boot, the `@ConfigurationProperties` annotation is used to bind external configuration properties (from `.properties`, `.yaml`, environment variables, etc.) to a Java object. However, for these properties to be recognized and used by Spring Boot, you need to **enable** them explicitly in your application.
+
+There are a couple of ways to enable `@ConfigurationProperties`-annotated types:
+
+### 1. **Using `@EnableConfigurationProperties`**
+
+The most common and straightforward way is by using the `@EnableConfigurationProperties` annotation. This annotation enables support for `@ConfigurationProperties`-annotated classes and ensures that Spring can bind external configurations to these classes.
+
+#### Example:
+
+1. **Create a `@ConfigurationProperties`-annotated Class**
+
+```java
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+@ConfigurationProperties(prefix = "myapp")
+public class MyAppConfig {
+
+    private String name;
+    private int timeout;
+
+    // Getters and setters
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public int getTimeout() {
+        return timeout;
+    }
+
+    public void setTimeout(int timeout) {
+        this.timeout = timeout;
+    }
+}
+```
+
+2. **Enable the Configuration Class in the Main Application**
+
+In your `@SpringBootApplication` class (the main entry point for Spring Boot), you need to enable the `MyAppConfig` class using the `@EnableConfigurationProperties` annotation.
+
+```java
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+
+@SpringBootApplication
+@EnableConfigurationProperties(MyAppConfig.class)
+public class MyApp {
+
+    public static void main(String[] args) {
+        SpringApplication.run(MyApp.class, args);
+    }
+}
+```
+
+With this configuration, Spring Boot will now automatically bind any properties that start with the prefix `myapp` (e.g., `myapp.name`, `myapp.timeout`) from your `application.properties` or `application.yml` files to the `MyAppConfig` class.
+
+3. **External Properties Example**
+
+**For `application.properties`:**
+
+```properties
+myapp.name=SpringBootApp
+myapp.timeout=5000
+```
+
+**For `application.yml`:**
+
+```yaml
+myapp:
+  name: SpringBootApp
+  timeout: 5000
+```
+
+### 2. **Using `@ConfigurationPropertiesScan` (Spring Boot 2.2+)**
+
+Starting with Spring Boot 2.2, you can also use the `@ConfigurationPropertiesScan` annotation to automatically scan for `@ConfigurationProperties` classes without needing to explicitly register them using `@EnableConfigurationProperties`.
+
+#### Example:
+
+1. **Annotate the Class with `@ConfigurationProperties`**
+
+```java
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+@ConfigurationProperties(prefix = "myapp")
+public class MyAppConfig {
+    // Fields and getters/setters as shown before
+}
+```
+
+2. **Enable Scanning for `@ConfigurationProperties` Classes**
+
+In your main application class, simply add `@ConfigurationPropertiesScan` to automatically scan for configuration properties classes.
+
+```java
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+
+@SpringBootApplication
+@ConfigurationPropertiesScan
+public class MyApp {
+
+    public static void main(String[] args) {
+        SpringApplication.run(MyApp.class, args);
+    }
+}
+```
+
+This will automatically pick up and bind properties to any classes annotated with `@ConfigurationProperties` within the package structure.
+
+---
+
+By using either `@EnableConfigurationProperties` or `@ConfigurationPropertiesScan`, Spring Boot will manage and inject configuration properties into your application components, enabling type-safe configuration.
+
+
+
+
+# Using @ConfigurationProperties-annotated Types
+
+
+### Using `@ConfigurationProperties`-annotated Types
+
+Using `@ConfigurationProperties`-annotated types allows you to bind properties from `application.properties` or `application.yml` directly to Java objects.
+
+#### 1. **Create a Configuration Properties Class**
+
+Create a class or record that will hold the configuration properties. Use the `@ConfigurationProperties` annotation to specify the prefix for the properties.
+
+```java
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+@ConfigurationProperties(prefix = "myapp")
+public record MyAppConfig(String name, int timeout) {
+}
+```
+
+For mutable objects:
+
+```java
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+@ConfigurationProperties(prefix = "myapp")
+public class MyAppConfig {
+
+    private String name;
+    private int timeout;
+
+    // Getters and setters
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public int getTimeout() {
+        return timeout;
+    }
+
+    public void setTimeout(int timeout) {
+        this.timeout = timeout;
+    }
+}
+```
+
+#### 2. **Enable the `@ConfigurationProperties` Class**
+
+To ensure that Spring picks up the `@ConfigurationProperties`-annotated class, you must register it using the `@EnableConfigurationProperties` annotation or scan for it using `@ConfigurationPropertiesScan`.
+
+```java
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+
+@SpringBootApplication
+@ConfigurationPropertiesScan // Automatically scans for @ConfigurationProperties classes
+public class MyApp {
+
+    public static void main(String[] args) {
+        SpringApplication.run(MyApp.class, args);
+    }
+}
+```
+
+Alternatively, use `@EnableConfigurationProperties` in a configuration class:
+
+```java
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@EnableConfigurationProperties(MyAppConfig.class)
+public class MyAppConfigLoader {
+}
+```
+
+#### 3. **Define Properties in `application.properties` or `application.yml`**
+
+Define the configuration in your properties file that matches the prefix used in `@ConfigurationProperties`.
+
+**In `application.properties`:**
+
+```properties
+myapp.name=Spring Application
+myapp.timeout=5000
+```
+
+**In `application.yml`:**
+
+```yaml
+myapp:
+  name: Spring Application
+  timeout: 5000
+```
+
+#### 4. **Inject and Use the Configuration in Components**
+
+Once the configuration class is created and registered, you can inject it into any Spring-managed bean.
+
+```java
+import org.springframework.stereotype.Service;
+
+@Service
+public class MyAppService {
+
+    private final MyAppConfig config;
+
+    public MyAppService(MyAppConfig config) {
+        this.config = config;
+    }
+
+    public void printConfig() {
+        System.out.println("App Name: " + config.name());
+        System.out.println("Timeout: " + config.timeout());
+    }
+}
+```
+
+#### 5. **Bind Nested Properties**
+
+If your configuration has nested properties, you can bind them into complex types. For example:
+
+**In `application.yml`:**
+
+```yaml
+myapp:
+  name: Spring Application
+  timeout: 5000
+  database:
+    url: jdbc:mysql://localhost:3306/mydb
+    username: root
+    password: secret
+```
+
+**Configuration Class:**
+
+```java
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+@ConfigurationProperties(prefix = "myapp")
+public record MyAppConfig(String name, int timeout, DatabaseConfig database) {
+
+    public record DatabaseConfig(String url, String username, String password) {
+    }
+}
+```
+
+Now you can access both the main and nested configurations easily within your Spring beans.
+
+### Summary for Using `@ConfigurationProperties`
+
+- **Immutable Types (Records):** Supports Java records for immutable configuration classes.
+- **Automatic Scanning:** Use `@ConfigurationPropertiesScan` to automatically pick up all `@ConfigurationProperties` classes.
+- **Constructor Binding:** Constructor-based binding ensures type safety and immutability.
+- **Nested Properties:** Easily bind complex and nested property structures using records or regular classes.
+
+This provides a modern, type-safe, and efficient way of handling application configurations.
+
+
+
+# Third-party Configuration
+
+### Third-party Configuration
+
+Spring Boot supports the integration of third-party configuration systems to manage application properties more effectively. This allows you to externalize configuration from your application code, making it easier to manage configurations for different environments (development, testing, production, etc.).
+
+#### 1. **Using External Configuration Files**
+
+You can load configuration properties from external files, such as `.properties`, `.yml`, or even JSON files. These files can be located anywhere in the file system, allowing flexibility in managing configurations outside of your application code.
+
+**Example of an external properties file:**
+
+```properties
+# application-external.properties
+myapp.name=External Application
+myapp.timeout=3000
+```
+
+**Loading External Configuration:**
+
+You can specify the location of external configuration files using the `spring.config.location` property:
+
+```bash
+java -jar myapp.jar --spring.config.location=file:/path/to/application-external.properties
+```
+
+#### 2. **Using Environment Variables**
+
+Spring Boot can automatically map environment variables to properties. This is particularly useful in cloud environments where configurations are often stored as environment variables.
+
+**Example:**
+
+Set an environment variable:
+
+```bash
+export MYAPP_NAME='Environment Application'
+```
+
+You can then access it in your application:
+
+```java
+System.out.println("App Name: " + System.getenv("MYAPP_NAME"));
+```
+
+#### 3. **Using Config Server**
+
+Spring Cloud Config Server allows you to manage application configurations in a central place. It serves configuration properties to applications from a variety of backends, such as Git, filesystem, or HashiCorp Vault.
+
+**Setting up a Config Server:**
+
+1. Create a Spring Boot application and add the `spring-cloud-config-server` dependency.
+2. Enable the Config Server in your main application class:
+
+   ```java
+   import org.springframework.cloud.config.server.EnableConfigServer;
+   import org.springframework.boot.SpringApplication;
+   import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+   @SpringBootApplication
+   @EnableConfigServer
+   public class ConfigServerApplication {
+       public static void main(String[] args) {
+           SpringApplication.run(ConfigServerApplication.class, args);
+       }
+   }
+   ```
+
+3. Configure the `application.properties` file to specify the backend configuration repository.
+
+   ```properties
+   spring.cloud.config.server.git.uri=https://github.com/your/repo
+   ```
+
+#### 4. **Using Consul or Zookeeper**
+
+Spring Cloud also supports external configuration management using service discovery tools like Consul and Zookeeper. You can store configuration data in these services, and Spring Boot will fetch it during application startup.
+
+**Example with Consul:**
+
+1. Set up a Consul server and store your properties there.
+2. Add the `spring-cloud-starter-consul-config` dependency to your project.
+3. Configure your application to connect to Consul:
+
+   ```properties
+   spring.cloud.consul.config.enabled=true
+   spring.cloud.consul.host=localhost
+   spring.cloud.consul.port=8500
+   ```
+
+#### 5. **Using Vault for Secure Configuration**
+
+Spring Cloud Vault provides support for securely accessing secrets stored in HashiCorp Vault. This is ideal for sensitive configurations, such as API keys and database passwords.
+
+**Setting up Vault:**
+
+1. Start a Vault server and store your secrets there.
+2. Add the `spring-cloud-starter-vault-config` dependency to your project.
+3. Configure the Vault properties in your application:
+
+   ```properties
+   spring.cloud.vault.uri=http://localhost:8200
+   spring.cloud.vault.token=my-token
+   ```
+
+### Summary for Third-party Configuration
+
+- **External Files:** Load configurations from external `.properties`, `.yml`, or JSON files.
+- **Environment Variables:** Map environment variables to properties seamlessly.
+- **Config Server:** Centralize configuration management with Spring Cloud Config Server.
+- **Service Discovery:** Use Consul or Zookeeper for dynamic configuration management.
+- **Secure Secrets:** Utilize Vault for managing sensitive information securely.
+
+By leveraging these third-party configurations, you can enhance the flexibility and security of your Spring Boot applications.
+
+# Relaxed Binding
+
+### Relaxed Binding in Spring Boot
+
+Relaxed binding is a feature in Spring Boot that allows for more flexible mapping of configuration properties to Java objects. This feature makes it easier to configure your application by letting you use various formats for property names, making the configuration process less strict and more user-friendly.
+
+#### How Relaxed Binding Works
+
+Spring Boot supports relaxed binding for configuration properties by allowing the following transformations:
+
+1. **Dot Notation:** You can use dot notation to represent nested properties. For example, if you have a property `myapp.database.url`, you can access it as `myapp.database.url`.
+
+2. **Underscore to Dot:** You can replace dots with underscores. For example, `myapp_database_url` can also be used to refer to the property `myapp.database.url`.
+
+3. **Kebab Case:** Hyphens can be used as well. For example, `myapp-database-url` is another way to refer to the same property.
+
+4. **Mixed Case:** Spring Boot also allows for mixed case. For example, `myApp.database.url` is valid and can be bound to the same property.
+
+#### Example of Relaxed Binding
+
+Consider the following configuration properties defined in `application.properties`:
+
+```properties
+myapp.database.url=jdbc:mysql://localhost:3306/mydb
+myapp.database.username=root
+myapp.database.password=secret
+```
+
+You can access these properties using various formats:
+
+- `myapp.database.url`
+- `myapp_database_url`
+- `myapp-database-url`
+- `myApp.database.url`
+
+#### Binding Relaxed Properties to Java Classes
+
+When using `@ConfigurationProperties`, you can bind these relaxed properties to Java classes seamlessly.
+
+**Configuration Class Example:**
+
+```java
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+@ConfigurationProperties(prefix = "myapp")
+public class MyAppConfig {
+    private DatabaseConfig database;
+
+    public static class DatabaseConfig {
+        private String url;
+        private String username;
+        private String password;
+
+        // Getters and setters
+    }
+
+    // Getters and setters for database
+}
+```
+
+With relaxed binding, if you specify any of the alternative property formats in your `application.properties`, they will still map correctly to the properties of `DatabaseConfig`.
+
+#### Enabling Relaxed Binding
+
+Relaxed binding is enabled by default in Spring Boot. You don’t need to configure anything extra to use it; it works out of the box when you use `@ConfigurationProperties`.
+
+### Benefits of Relaxed Binding
+
+- **Flexibility:** You can choose your preferred naming convention, making it easier for developers to read and write configuration properties.
+- **Compatibility:** It allows for better integration with existing systems or libraries that may use different naming styles for properties.
+- **User-Friendly:** Reduces the chances of configuration errors by allowing multiple formats for property names.
+
+### Summary
+
+- **Relaxed Binding:** A Spring Boot feature that allows for flexible property name formats.
+- **Naming Formats:** Supports dot notation, underscores, hyphens, mixed case, etc.
+- **Seamless Integration:** Works out of the box with `@ConfigurationProperties`.
+- **Enhanced Flexibility:** Makes configuration easier and more user-friendly. 
+
+By using relaxed binding, you can simplify your configuration management, making your Spring Boot applications more adaptable and easier to work with.
+
+
+
+Here’s the table for relaxed binding rules per property source as requested:
+
+| **Property Source**       | **Simple Notation**                                     | **List Notation**                                   |
+|---------------------------|--------------------------------------------------------|-----------------------------------------------------|
+| **Properties Files**      | Camel case, kebab case, or underscore notation         | Standard list syntax using `[ ]` or comma-separated values |
+| **YAML Files**            | Camel case, kebab case, or underscore notation         | Standard YAML list syntax or comma-separated values  |
+| **Environment Variables**  | Upper case format with underscore as the delimiter     | Numeric values surrounded by underscores             |
+| **System Properties**      | Camel case, kebab case, or underscore notation         | Standard list syntax using `[ ]` or comma-separated values |
+
+### Notes:
+- **Simple Notation:** Refers to how individual properties are formatted.
+- **List Notation:** Describes how to specify multiple values for a property. 
+
+This table summarizes the relaxed binding rules, making it easier to understand how to configure properties across different sources in Spring Boot.
+
+
+
+# Binding Maps
+### Binding Maps in Spring Boot
+
+Binding maps in Spring Boot allows you to map configuration properties to a `Map` data structure, enabling dynamic and flexible configurations. This feature is particularly useful when you have a set of properties that share a common prefix but differ in their keys.
+
+#### How to Use Binding Maps
+
+1. **Configuration Properties Structure:**
+   You can define a property structure in your `application.properties` or `application.yml` file where multiple properties share a common prefix.
+
+   **Example (application.properties):**
+   ```properties
+   myapp.features.logging.enabled=true
+   myapp.features.logging.level=INFO
+   myapp.features.cache.enabled=false
+   myapp.features.cache.size=100
+   ```
+
+   **Example (application.yml):**
+   ```yaml
+   myapp:
+     features:
+       logging:
+         enabled: true
+         level: INFO
+       cache:
+         enabled: false
+         size: 100
+   ```
+
+2. **Java Class for Binding:**
+   Create a Java class with a `Map` field to bind these properties.
+
+   **Example:**
+   ```java
+   import org.springframework.boot.context.properties.ConfigurationProperties;
+
+   import java.util.Map;
+
+   @ConfigurationProperties(prefix = "myapp.features")
+   public class MyAppFeatures {
+       private Map<String, Feature> features;
+
+       public static class Feature {
+           private boolean enabled;
+           private String level;
+           private int size;
+
+           // Getters and Setters
+       }
+
+       // Getters and Setters for features
+   }
+   ```
+
+3. **Using the Bound Map:**
+   After binding, you can access the properties using the `Map` structure.
+
+   **Example Usage:**
+   ```java
+   @Autowired
+   private MyAppFeatures myAppFeatures;
+
+   public void printFeatures() {
+       myAppFeatures.getFeatures().forEach((key, feature) -> {
+           System.out.println("Feature: " + key);
+           System.out.println("Enabled: " + feature.isEnabled());
+           System.out.println("Level: " + feature.getLevel());
+           System.out.println("Size: " + feature.getSize());
+       });
+   }
+   ```
+
+#### Benefits of Binding Maps
+
+- **Dynamic Configuration:** Easily manage a variable number of properties without needing to create a dedicated class for each configuration.
+- **Flexibility:** You can easily add or remove properties without changing the underlying Java structure.
+- **Readability:** Keeping related properties grouped under a common prefix improves organization and readability.
+
+### Summary
+
+Binding maps in Spring Boot provides a flexible way to manage related configuration properties using a `Map` data structure. This approach simplifies the configuration process and enhances the maintainability of your application.
+
+
+# Binding From Environment Variables
+
+
+### Binding From Environment Variables in Spring Boot
+
+Spring Boot allows you to bind configuration properties directly from environment variables, which can be especially useful for deploying applications in different environments (like development, testing, and production) without changing the code.
+
+#### How It Works
+
+1. **Environment Variable Format:**
+   Environment variables should be specified in uppercase, using underscores (`_`) as the delimiter. This format follows a relaxed binding rule, where dots (`.`) in property names are replaced by underscores.
+
+   **Example:**
+   If you have a property defined in your application as `myapp.database.url`, the corresponding environment variable should be:
+   ```
+   MYAPP_DATABASE_URL
+   ```
+
+2. **Setting Environment Variables:**
+   You can set environment variables in different ways, depending on your operating system and deployment method.
+
+   **Example (Linux/Unix):**
+   ```bash
+   export MYAPP_DATABASE_URL=jdbc:mysql://localhost:3306/mydb
+   ```
+
+   **Example (Windows):**
+   ```cmd
+   set MYAPP_DATABASE_URL=jdbc:mysql://localhost:3306/mydb
+   ```
+
+3. **Binding to Configuration Properties:**
+   Create a Java class to bind these environment variables to a configuration properties class.
+
+   **Example:**
+   ```java
+   import org.springframework.boot.context.properties.ConfigurationProperties;
+
+   @ConfigurationProperties(prefix = "myapp.database")
+   public class DatabaseProperties {
+       private String url;
+       private String username;
+       private String password;
+
+       // Getters and Setters
+   }
+   ```
+
+4. **Accessing the Properties:**
+   You can use the `@Autowired` annotation to access the bound properties in your application.
+
+   **Example:**
+   ```java
+   @Autowired
+   private DatabaseProperties databaseProperties;
+
+   public void connectToDatabase() {
+       System.out.println("Connecting to: " + databaseProperties.getUrl());
+   }
+   ```
+
+#### Special Cases
+
+- **Numeric Values:** If you need to bind numeric values, surround them with underscores. For example, if you have a numeric property like `myapp.cache.size`, you can set it as:
+   ```
+   MYAPP_CACHE_SIZE=100
+   ```
+
+- **Default Values:** If an environment variable is not set, Spring Boot will use the default value specified in your configuration properties class (if any).
+
+#### Advantages of Binding from Environment Variables
+
+- **Configuration Flexibility:** Easily change configuration settings without modifying code or property files.
+- **Environment-Specific Configurations:** Manage different configurations for various environments (development, testing, production) without changes to the application.
+- **Security:** Sensitive information, like passwords, can be stored in environment variables instead of being hard-coded in configuration files.
+
+### Summary
+
+Binding from environment variables in Spring Boot is a powerful feature that enhances flexibility and security. By using environment variables, you can adapt your application to different environments seamlessly and maintain sensitive data securely.
+
+
+# Merging Complex Types in Spring Boot
+
+In Spring Boot, merging complex types involves combining or integrating data from various sources or configurations into a single cohesive object. This can be particularly useful when dealing with configuration properties, where multiple sources of configuration might define the same property, and you want to merge them into a structured format.
+
+#### Key Concepts
+
+1. **Complex Types:**
+   These are typically Java classes that contain multiple fields and can include nested objects. For example, a `DatabaseProperties` class might include fields like `url`, `username`, and `password`.
+
+2. **Merging Behavior:**
+   When merging configurations, Spring Boot follows specific rules to determine which properties take precedence. This behavior is defined by the order in which configuration sources are processed.
+
+#### Example of Merging Complex Types
+
+Suppose you have the following complex type defined in your Spring Boot application:
+
+```java
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+@ConfigurationProperties(prefix = "myapp")
+public class MyAppProperties {
+    private DatabaseProperties database;
+
+    // Getters and Setters
+
+    public static class DatabaseProperties {
+        private String url;
+        private String username;
+        private String password;
+
+        // Getters and Setters
+    }
+}
+```
+
+#### Configuration Sources
+
+You might define the `myapp.database` properties in different configuration sources:
+
+1. **application.yml:**
+   ```yaml
+   myapp:
+     database:
+       url: jdbc:mysql://localhost:3306/mydb
+       username: user
+       password: pass
+   ```
+
+2. **application-dev.yml:**
+   ```yaml
+   myapp:
+     database:
+       url: jdbc:mysql://localhost:3306/devdb
+   ```
+
+In this scenario, the `application-dev.yml` file overrides the `url` property defined in `application.yml`, while the `username` and `password` properties remain unchanged.
+
+#### Merging Logic
+
+When the application starts, Spring Boot will merge the properties as follows:
+
+- The `url` property from `application-dev.yml` will take precedence over the one defined in `application.yml`.
+- The `username` and `password` will remain as defined in `application.yml` since they are not overridden in `application-dev.yml`.
+
+The final merged result will look like this:
+
+```yaml
+myapp:
+  database:
+    url: jdbc:mysql://localhost:3306/devdb
+    username: user
+    password: pass
+```
+
+### Accessing Merged Properties
+
+To access the merged properties, you can use the `@Autowired` annotation in any Spring-managed bean:
+
+```java
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+@Service
+public class MyService {
+    @Autowired
+    private MyAppProperties myAppProperties;
+
+    public void connectToDatabase() {
+        System.out.println("Connecting to: " + myAppProperties.getDatabase().getUrl());
+    }
+}
+```
+
+### Summary
+
+Merging complex types in Spring Boot allows you to create structured configuration objects that can draw from multiple sources. By defining properties in various configuration files and leveraging Spring Boot's merging logic, you can easily manage different configurations for various environments. This feature helps maintain clarity and organization in your application’s configuration management.
+
+
+
+# Properties Conversion
+### Properties Conversion in Spring Boot
+
+Properties conversion in Spring Boot involves transforming property values from their original format into the desired format that can be used within your application. This is especially useful when you want to bind configuration properties to complex types or when dealing with different data formats.
+
+#### Key Concepts
+
+1. **Type Conversion:**
+   Spring Boot supports automatic conversion of properties based on their target type. For example, if a property is defined as an integer in your configuration file, Spring will convert it from a string to an integer when binding.
+
+2. **Custom Converters:**
+   You can define custom converters to handle specific conversion needs that are not covered by default conversions.
+
+#### Automatic Type Conversion
+
+When binding properties to Java objects, Spring Boot automatically converts the string representation of properties into the appropriate data types based on the field types in the target class.
+
+**Example:**
+
+Suppose you have a configuration class like this:
+
+```java
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+@ConfigurationProperties(prefix = "app")
+public class AppProperties {
+    private int port;
+    private boolean debug;
+    private String host;
+
+    // Getters and Setters
+}
+```
+
+In your `application.properties`, you might have:
+
+```properties
+app.port=8080
+app.debug=true
+app.host=localhost
+```
+
+When Spring Boot binds these properties, it automatically converts `app.port` from a string to an integer, `app.debug` from a string to a boolean, and `app.host` remains a string.
+
+#### Custom Property Converters
+
+If you need to convert properties in a way that is not supported by default, you can create a custom converter. Here’s how:
+
+1. **Implement the Converter Interface:**
+
+```java
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.stereotype.Component;
+
+@Component
+public class StringToCustomTypeConverter implements Converter<String, CustomType> {
+    @Override
+    public CustomType convert(String source) {
+        // Your conversion logic here
+        return new CustomType(source);
+    }
+}
+```
+
+2. **Register the Converter:**
+   Spring automatically detects and registers converters annotated with `@Component`. You can also manually register converters using a `@Configuration` class.
+
+```java
+import org.springframework.context.annotation.Configuration;
+import org.springframework.format.FormatterRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+    @Override
+    public void addFormatters(FormatterRegistry registry) {
+        registry.addConverter(new StringToCustomTypeConverter());
+    }
+}
+```
+
+#### Binding Properties with Custom Types
+
+If you have a custom type that requires specific conversion logic, you can bind properties to it in the same way as with standard types, as long as you have the appropriate converter in place.
+
+**Example:**
+
+```java
+@ConfigurationProperties(prefix = "app")
+public class AppProperties {
+    private CustomType customField;
+
+    // Getters and Setters
+}
+```
+
+In your `application.properties`:
+
+```properties
+app.customField=someValue
+```
+
+The custom converter will be invoked to convert the string `someValue` into a `CustomType` instance.
+
+### Summary
+
+Properties conversion in Spring Boot is an essential feature that allows for seamless integration of configuration properties into your application. With automatic type conversion and the ability to define custom converters, you can handle complex data types and ensure that your application configuration is both flexible and robust. This capability enhances the maintainability and clarity of your application’s configuration management.
+
+
+
+# Converting Durations
+
+### Converting Durations in Spring Boot
+
+In Spring Boot, converting durations refers to the process of interpreting and converting time durations specified in configuration properties into Java's `Duration` type. This is particularly useful for configuration settings that involve timeouts, delays, or intervals.
+
+#### Key Concepts
+
+1. **Duration Type:**
+   The `Duration` class from `java.time` package represents a time-based amount of time, such as "34.5 seconds". It is part of the Java 8 Time API, which provides a better way to handle date and time in Java.
+
+2. **Configuration Properties:**
+   Spring Boot allows you to define duration properties in a variety of formats, which will be automatically converted to `Duration` objects when bound to your configuration classes.
+
+#### Example of Using Duration in Configuration Properties
+
+Suppose you want to configure a timeout for a service. You can define a configuration class like this:
+
+```java
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import java.time.Duration;
+
+@ConfigurationProperties(prefix = "service")
+public class ServiceProperties {
+    private Duration timeout;
+
+    // Getters and Setters
+    public Duration getTimeout() {
+        return timeout;
+    }
+
+    public void setTimeout(Duration timeout) {
+        this.timeout = timeout;
+    }
+}
+```
+
+In your `application.properties`, you can define the `timeout` property using various formats:
+
+```properties
+service.timeout=PT30S   # ISO-8601 format (30 seconds)
+service.timeout=30s      # Short form (30 seconds)
+service.timeout=1m       # 1 minute
+service.timeout=2h       # 2 hours
+```
+
+### Accessing the Converted Duration
+
+You can access the converted `Duration` in your service or component as follows:
+
+```java
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+@Service
+public class MyService {
+    private final ServiceProperties serviceProperties;
+
+    @Autowired
+    public MyService(ServiceProperties serviceProperties) {
+        this.serviceProperties = serviceProperties;
+    }
+
+    public void performAction() {
+        Duration timeout = serviceProperties.getTimeout();
+        // Use the timeout for a scheduled task or API call
+        System.out.println("Timeout is set to: " + timeout.getSeconds() + " seconds");
+    }
+}
+```
+
+### Summary
+
+Converting durations in Spring Boot allows you to easily work with time-based configurations in a readable format. By using the `Duration` class, you can specify durations in various formats, and Spring Boot will handle the conversion automatically. This feature enhances the clarity and maintainability of your application's configuration, making it easier to manage time-related properties.
+
+
+
+### Duration Formats in Spring Boot
+
+In Spring Boot, you can specify durations using various time units. Here's a quick reference for the duration formats you can use:
+
+| Format | Time Unit      | Example        |
+|--------|----------------|-----------------|
+| `ns`   | Nanoseconds    | `100ns`         |
+| `us`   | Microseconds   | `200us`         |
+| `ms`   | Milliseconds   | `300ms`         |
+| `s`    | Seconds        | `30s`           |
+| `m`    | Minutes        | `5m`            |
+| `h`    | Hours          | `2h`            |
+| `d`    | Days           | `1d`            |
+
+### Example of Using Duration Formats
+
+In your `application.properties`, you can define durations using these formats:
+
+```properties
+service.timeout=PT30S        # ISO-8601 format (30 seconds)
+service.shortTimeout=300ms    # 300 milliseconds
+service.longTimeout=1h        # 1 hour
+```
+
+### Summary
+
+Using these formats allows for flexible configuration of time durations in your Spring Boot applications, making it easier to specify timeouts, delays, or intervals in a clear and concise manner.
+
+
+## Converting Periods in Spring Boot
+
+In Spring Boot, converting periods refers to interpreting and converting time periods specified in configuration properties into Java's `Period` type. This is useful for configuration settings that involve dates, such as age, duration of events, or time intervals.
+
+#### Key Concepts
+
+1. **Period Type:**
+   The `Period` class from `java.time` package represents a period of time in terms of years, months, and days. It is particularly useful when you need to work with date-based amounts of time.
+
+2. **Configuration Properties:**
+   Spring Boot allows you to define period properties in a variety of formats, which will be automatically converted to `Period` objects when bound to your configuration classes.
+
+#### Example of Using Period in Configuration Properties
+
+Suppose you want to configure an expiration period for a service. You can define a configuration class like this:
+
+```java
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import java.time.Period;
+
+@ConfigurationProperties(prefix = "service")
+public class ServiceProperties {
+    private Period expirationPeriod;
+
+    // Getters and Setters
+    public Period getExpirationPeriod() {
+        return expirationPeriod;
+    }
+
+    public void setExpirationPeriod(Period expirationPeriod) {
+        this.expirationPeriod = expirationPeriod;
+    }
+}
+```
+
+In your `application.properties`, you can define the `expirationPeriod` property using the ISO-8601 format:
+
+```properties
+service.expirationPeriod=P30D   # ISO-8601 format (30 days)
+```
+
+### Accessing the Converted Period
+
+You can access the converted `Period` in your service or component as follows:
+
+```java
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+@Service
+public class MyService {
+    private final ServiceProperties serviceProperties;
+
+    @Autowired
+    public MyService(ServiceProperties serviceProperties) {
+        this.serviceProperties = serviceProperties;
+    }
+
+    public void performAction() {
+        Period expiration = serviceProperties.getExpirationPeriod();
+        // Use the expiration period for date calculations
+        System.out.println("Expiration period is set to: " + expiration.getDays() + " days");
+    }
+}
+```
+
+### Summary
+
+Converting periods in Spring Boot allows you to easily work with date-based configurations in a readable format. By using the `Period` class, you can specify periods in various formats, and Spring Boot will handle the conversion automatically. This feature enhances the clarity and maintainability of your application's configuration, making it easier to manage date-related properties.
+
+
+
+### Period Formats in Spring Boot
+
+In Spring Boot, you can specify periods using various time units. Here's a quick reference for the period formats you can use:
+
+| Format | Time Unit | Example   |
+|--------|-----------|-----------|
+| `y`    | Years     | `2y`      |
+| `m`    | Months    | `5m`      |
+| `w`    | Weeks     | `3w`      |
+| `d`    | Days      | `10d`     |
+
+### Example of Using Period Formats
+
+In your `application.properties`, you can define periods using these formats:
+
+```properties
+service.expirationPeriod=P1Y   # 1 year
+service.shortPeriod=P2M         # 2 months
+service.weeklySchedule=P1W       # 1 week
+```
+
+### Summary
+
+Using these formats allows for flexible configuration of time periods in your Spring Boot applications, making it easier to specify date-related properties such as expiration times, schedules, or intervals in a clear and concise manner.
+
+
+
+### Converting Data Sizes in Spring Boot
+
+In Spring Boot, converting data sizes involves interpreting configuration properties that specify sizes in various units. This is useful for properties like file sizes, memory limits, or data storage amounts.
+
+#### Key Concepts
+
+1. **Data Size Types:**
+   Data sizes can be represented in various formats, such as bytes, kilobytes, megabytes, gigabytes, etc. 
+
+2. **Configuration Properties:**
+   Spring Boot allows you to define data size properties in a user-friendly way, which will be automatically converted to the appropriate data type.
+
+#### Supported Data Size Formats
+
+Here's a quick reference for the data size formats you can use:
+
+| Format | Data Size Unit | Example        |
+|--------|----------------|-----------------|
+| `B`    | Bytes          | `100B`          |
+| `KB`   | Kilobytes      | `1KB`           |
+| `MB`   | Megabytes      | `5MB`           |
+| `GB`   | Gigabytes      | `2GB`           |
+| `TB`   | Terabytes      | `1TB`           |
+
+### Example of Using Data Size in Configuration Properties
+
+Suppose you want to configure a maximum file upload size in your application. You can define a configuration class like this:
+
+```java
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.util.unit.DataSize;
+
+@ConfigurationProperties(prefix = "upload")
+public class UploadProperties {
+    private DataSize maxFileSize;
+
+    // Getters and Setters
+    public DataSize getMaxFileSize() {
+        return maxFileSize;
+    }
+
+    public void setMaxFileSize(DataSize maxFileSize) {
+        this.maxFileSize = maxFileSize;
+    }
+}
+```
+
+In your `application.properties`, you can define the `maxFileSize` property using the supported formats:
+
+```properties
+upload.maxFileSize=10MB   # 10 megabytes
+```
+
+### Accessing the Converted Data Size
+
+You can access the converted data size in your service or component as follows:
+
+```java
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+@Service
+public class FileUploadService {
+    private final UploadProperties uploadProperties;
+
+    @Autowired
+    public FileUploadService(UploadProperties uploadProperties) {
+        this.uploadProperties = uploadProperties;
+    }
+
+    public void handleFileUpload() {
+        DataSize maxSize = uploadProperties.getMaxFileSize();
+        System.out.println("Maximum file size allowed: " + maxSize.toGigabytes() + " GB");
+    }
+}
+```
+
+### Summary
+
+Converting data sizes in Spring Boot allows you to easily work with size-related configurations in a clear format. By using the supported data size units, you can specify limits for file uploads, memory usage, or any other size-related properties, making your application configuration more intuitive and manageable.
+
+
+
+### @ConfigurationProperties Validation in Spring Boot
+
+In Spring Boot, you can use the `@ConfigurationProperties` annotation to bind configuration properties to Java objects. To ensure the integrity and validity of these properties, you can apply validation constraints.
+
+#### Key Concepts
+
+1. **Validation Annotations:**
+   You can use Java Bean Validation (JSR-380) annotations to enforce constraints on your configuration properties. Common annotations include:
+   - `@NotNull`: Ensures the property is not null.
+   - `@Size`: Validates the size of a string (for example, to set minimum and maximum length).
+   - `@Min` and `@Max`: Validates numerical values.
+
+2. **Binding with Validation:**
+   To enable validation, you need to ensure that the `spring-boot-starter-validation` dependency is included in your project.
+
+#### Example of Using @ConfigurationProperties Validation
+
+1. **Add Dependency:**
+   Make sure to include the validation starter in your `pom.xml`:
+
+   ```xml
+   <dependency>
+       <groupId>org.springframework.boot</groupId>
+       <artifactId>spring-boot-starter-validation</artifactId>
+   </dependency>
+   ```
+
+2. **Define the Configuration Properties Class:**
+
+   ```java
+   import org.springframework.boot.context.properties.ConfigurationProperties;
+   import javax.validation.constraints.NotNull;
+   import javax.validation.constraints.Size;
+
+   @ConfigurationProperties(prefix = "app")
+   public class AppProperties {
+       @NotNull
+       private String name;
+
+       @Size(min = 1, max = 100)
+       private String description;
+
+       @NotNull
+       private Integer maxUsers;
+
+       // Getters and Setters
+       public String getName() {
+           return name;
+       }
+
+       public void setName(String name) {
+           this.name = name;
+       }
+
+       public String getDescription() {
+           return description;
+       }
+
+       public void setDescription(String description) {
+           this.description = description;
+       }
+
+       public Integer getMaxUsers() {
+           return maxUsers;
+       }
+
+       public void setMaxUsers(Integer maxUsers) {
+           this.maxUsers = maxUsers;
+       }
+   }
+   ```
+
+3. **Enable Validation:**
+   In your main application class, you can enable validation by adding the `@Validated` annotation:
+
+   ```java
+   import org.springframework.boot.SpringApplication;
+   import org.springframework.boot.autoconfigure.SpringBootApplication;
+   import org.springframework.boot.context.properties.EnableConfigurationProperties;
+   import org.springframework.validation.annotation.Validated;
+
+   @SpringBootApplication
+   @EnableConfigurationProperties(AppProperties.class)
+   @Validated
+   public class MyApplication {
+       public static void main(String[] args) {
+           SpringApplication.run(MyApplication.class, args);
+       }
+   }
+   ```
+
+4. **Handling Validation Errors:**
+   If validation fails, Spring Boot will throw a `BindException` or `MethodArgumentNotValidException`, which you can handle globally using an exception handler.
+
+### Summary
+
+Using validation with `@ConfigurationProperties` in Spring Boot ensures that your application's configuration properties are valid and meet your specified constraints. This helps in preventing misconfigurations and promotes better application reliability. By applying Java Bean Validation annotations, you can enforce rules like non-null values and size constraints directly on your configuration classes.
+
+
+
+
+### @ConfigurationProperties vs. @Value in Spring Boot
+
+In Spring Boot, both `@ConfigurationProperties` and `@Value` annotations are used for external configuration management, but they serve different purposes and have distinct use cases. Here's a comparison of the two:
+
+#### 1. **@ConfigurationProperties**
+
+- **Purpose**: Binds a group of properties from configuration files (like `application.properties` or `application.yml`) to a Java object.
+- **Use Case**: Best used when you have multiple related properties or complex structures.
+- **Validation**: Supports Java Bean Validation, allowing you to validate the properties automatically.
+- **Type Safety**: Provides type-safe access to properties, making it easier to manage configurations.
+- **Example**:
+
+    ```java
+    import org.springframework.boot.context.properties.ConfigurationProperties;
+    import javax.validation.constraints.NotNull;
+
+    @ConfigurationProperties(prefix = "app")
+    public class AppProperties {
+        @NotNull
+        private String name;
+
+        private String description;
+
+        // Getters and Setters
+    }
+    ```
+
+- **Configuration**:
+  
+    ```properties
+    app.name=MyApp
+    app.description=This is my application.
+    ```
+
+#### 2. **@Value**
+
+- **Purpose**: Injects individual property values directly into fields or method parameters.
+- **Use Case**: Best used for single properties or when you want to inject values directly into beans.
+- **Validation**: Does not support automatic validation.
+- **Type Safety**: Offers less type safety compared to `@ConfigurationProperties` since it works with raw string values.
+- **Example**:
+
+    ```java
+    import org.springframework.beans.factory.annotation.Value;
+    import org.springframework.stereotype.Component;
+
+    @Component
+    public class MyService {
+        @Value("${app.name}")
+        private String appName;
+
+        @Value("${app.description:Default description}")
+        private String appDescription; // With default value
+
+        // Use appName and appDescription in methods
+    }
+    ```
+
+- **Configuration**:
+  
+    ```properties
+    app.name=MyApp
+    app.description=This is my application.
+    ```
+
+### Key Differences
+
+| Feature                       | @ConfigurationProperties                        | @Value                                |
+|-------------------------------|-------------------------------------------------|---------------------------------------|
+| **Binding**                   | Binds to a Java object (POJO)                  | Injects individual properties          |
+| **Validation**                | Supports validation with annotations             | No built-in validation                 |
+| **Type Safety**               | Type-safe access to properties                   | Less type-safe; uses raw strings      |
+| **Complex Structures**        | Ideal for complex or nested properties           | Best for single values                 |
+| **Default Values**            | No built-in support for defaults                 | Can specify default values directly    |
+
+### When to Use Which?
+
+- **Use `@ConfigurationProperties`** when:
+  - You have multiple related properties.
+  - You want to validate the configuration properties.
+  - You prefer a type-safe approach with a POJO.
+
+- **Use `@Value`** when:
+  - You only need to inject a few simple properties.
+  - You need a quick and straightforward way to access single values.
+  - You want to set default values inline.
+
+### Summary
+
+Both `@ConfigurationProperties` and `@Value` have their strengths and weaknesses in Spring Boot. Choosing between them depends on your specific use case and preferences for managing configuration properties. For complex configurations, `@ConfigurationProperties` is often the better choice, while `@Value` can be convenient for simpler needs.
+
+
+
+
